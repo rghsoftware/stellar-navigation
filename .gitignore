@@ -1,0 +1,30 @@
+# Build artifacts
+**/build/
+**/.pio/
+*.elf
+*.bin
+*.hex
+*.o
+*.a
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Test data (use Git LFS for binary files)
+test-data/scenarios/*.bin
+
+# Secrets
+**/secrets.yaml
+*.key
+*.pem
