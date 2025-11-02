@@ -5,7 +5,9 @@ Autonomous spacecraft attitude determination using star pattern recognition.
 ## Components
 
 - **firmware/** - STM32 embedded software (navigation algorithms)
+- **cfs/** - NASA Core Flight System (git submodule)
 - **cfs-apps/** - Core Flight System applications (STARNAV_APP)
+- **cfs-defs/** - Build configuration for cFS
 - **dashboard/** - Python web interface with 3D visualization
 - **test-data/** - Synthetic star field observations
 - **docs/** - Comprehensive documentation
@@ -45,4 +47,5 @@ cd dashboard && pip install -r requirements.txt
 
 ## License
 
-[Your chosen license]
+This project is licensed under the MIT License -
+see the [LICENSE](LICENSE) file for details.
