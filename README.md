@@ -47,17 +47,22 @@ Follow the component guides in order:
 ### ⚡ For Experienced Users
 
 ```bash
-# 1. Setup Pi and install cFS
-cd ~/workspace/cFS && make prep && make -j$(nproc)
+# 1. Clone and setup cFS
+git clone <repo-url> ~/workspace/stellar-navigation
+cd ~/workspace/stellar-navigation
+./scripts/setup-cfs.sh
 
-# 2. Build firmware (future)
-cd firmware && make flash
+# 2. Build cFS
+cd cfs && make SIMULATION=native prep && make -j$(nproc) && make install
 
-# 3. Run system
-cd ~/workspace/cFS/build/exe/cpu1 && ./core-cpu1 &
+# 3. Build firmware (future)
+cd ../firmware && make flash
+
+# 4. Run system
+cd ~/workspace/stellar-navigation/cfs/build/exe/cpu1 && ./core-cpu1 &
 cd ~/workspace/stellar-navigation/dashboard && python3 cfs_bridge.py
 
-# 4. Open browser: http://localhost:5000
+# 5. Open browser: http://localhost:5000
 ```
 
 ---

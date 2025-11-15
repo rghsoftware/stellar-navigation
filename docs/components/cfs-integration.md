@@ -14,6 +14,7 @@ This guide covers configuring cFS for the Stellar Navigation project and creatin
 - cFS is included as a git submodule (NASA's code, unmodified)
 - Mission-specific files live in `cfs-mission/` directory
 - Build configuration and custom apps symlinked into `cfs/` for compilation
+- Use `./scripts/setup-cfs.sh` to initialize everything automatically
 
 **What cFS provides:**
 
@@ -63,28 +64,33 @@ graph TD
 
 The cFS bundle is already included as a submodule in this project at `cfs/`.
 
-**If starting fresh:**
+**Initial setup:**
 
 ```bash
 # Clone the stellar-navigation repository
 git clone <your-repo-url> ~/workspace/stellar-navigation
 cd ~/workspace/stellar-navigation
 
-# Initialize cFS submodule
-git submodule update --init --recursive
-
-# Verify cFS is present
-ls cfs/cfe cfs/osal cfs/psp
-
-# Verify mission config is present
-ls cfs-mission/Makefile cfs-mission/sample_defs/targets.cmake
-ls -l cfs/Makefile cfs/sample_defs  # Should show symlinks
+# Run setup script (initializes submodule and creates symlinks)
+./scripts/setup-cfs.sh
 ```
 
-**What gets cloned:**
-- ✅ cFS submodule (NASA's code, pristine)
-- ✅ Your mission files in `cfs-mission/` (Makefile, sample_defs, apps)
-- ✅ Symlinks automatically created from `cfs/` → `cfs-mission/`
+**What the setup script does:**
+1. Initializes cFS submodule (`git submodule update --init --recursive`)
+2. Creates symlink: `cfs/Makefile` → `../cfs-mission/Makefile`
+3. Creates symlink: `cfs/sample_defs` → `../cfs-mission/sample_defs`
+4. Creates symlink: `cfs/apps/starnav` → `../../cfs-mission/apps/starnav`
+
+**Verify setup:**
+
+```bash
+# Check cFS submodule
+ls cfs/cfe cfs/osal cfs/psp
+
+# Check symlinks
+ls -l cfs/Makefile cfs/sample_defs cfs/apps/starnav
+# Should show: -> ../cfs-mission/...
+```
 
 ⏱️ **Time**: 5 minutes
 
@@ -124,21 +130,20 @@ stellar-navigation/cfs-mission/
 
 ### Configure Build
 
-**Initial setup (if not already present):**
+**Note**: If you ran `./scripts/setup-cfs.sh`, the symlinks are already created. This section is for reference only.
+
+**Manual setup (if needed):**
 
 ```bash
 cd ~/workspace/stellar-navigation
 
-# Copy sample configuration to mission directory
-cp cfs/cfe/cmake/Makefile.sample cfs-mission/Makefile
-cp -r cfs/cfe/cmake/sample_defs cfs-mission/
-
-# Create symlinks so cFS build finds them
+# Create symlinks so cFS build finds mission config
 ln -s ../cfs-mission/Makefile cfs/Makefile
 ln -s ../cfs-mission/sample_defs cfs/sample_defs
+ln -s ../../cfs-mission/apps/starnav cfs/apps/starnav
 ```
 
-**Note**: These files should already exist in your repository. Only copy if starting fresh.
+**Note**: Mission configuration files already exist in `cfs-mission/`.
 
 ---
 
