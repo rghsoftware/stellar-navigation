@@ -323,6 +323,29 @@ ln -s ../../cfs-mission/apps/starnav starnav
 cd ~/workspace/stellar-navigation/cfs-mission/apps/starnav
 ```
 
+### CMake Configuration
+
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/CMakeLists.txt`
+
+**Create `CMakeLists.txt`:**
+
+```cmake
+cmake_minimum_required(VERSION 3.5)
+project(CFS_STARNAV C)
+
+set(APP_SRC_FILES
+    fsw/src/starnav_app.c
+    fsw/src/starnav_device.c
+)
+
+add_cfe_app(starnav ${APP_SRC_FILES})
+
+target_include_directories(starnav PUBLIC
+    fsw/mission_inc
+    fsw/platform_inc
+)
+```
+
 ### Message ID Definitions
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/platform_inc/starnav_msgid.h`
@@ -794,29 +817,6 @@ void STARNAV_ProcessCommandPacket(CFE_SB_Buffer_t *SBBufPtr)
             break;
     }
 }
-```
-
-### CMake Configuration
-
-**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/CMakeLists.txt`
-
-**Create `CMakeLists.txt`:**
-
-```cmake
-cmake_minimum_required(VERSION 3.5)
-project(CFS_STARNAV C)
-
-set(APP_SRC_FILES
-    fsw/src/starnav_app.c
-    fsw/src/starnav_device.c
-)
-
-add_cfe_app(starnav ${APP_SRC_FILES})
-
-target_include_directories(starnav PUBLIC
-    fsw/mission_inc
-    fsw/platform_inc
-)
 ```
 
 ---
