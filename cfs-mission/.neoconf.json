@@ -9,13 +9,28 @@
 				"--header-insertion=iwyu",
 				"--completion-style=detailed",
 				"--function-arg-placeholders",
-				"--fallback-style=llvm"
+				"--fallback-style=llvm",
+				"--query-driver=/usr/bin/gcc"
 			],
 			"init_options": {
 				"clangdFileStatus": true,
 				"usePlaceholders": true,
 				"completeUnimported": true,
-				"semanticHighlighting": true
+				"semanticHighlighting": true,
+				"fallbackFlags": [
+					"-I../cfs/cfe/modules/core_api/fsw/inc",
+					"-I../cfs/cfe/modules/sb/fsw/inc",
+					"-I../cfs/cfe/modules/es/fsw/inc",
+					"-I../cfs/cfe/modules/evs/fsw/inc",
+					"-I../cfs/cfe/modules/fs/fsw/inc",
+					"-I../cfs/cfe/modules/tbl/fsw/inc",
+					"-I../cfs/cfe/modules/time/fsw/inc",
+					"-I../cfs/cfe/modules/msg/fsw/inc",
+					"-I../cfs/cfe/modules/resourceid/fsw/inc",
+					"-I../cfs/osal/src/os/inc",
+					"-I../cfs/psp/fsw/inc",
+					"-std=c11"
+				]
 			},
 			"filetypes": ["c", "h"]
 		}
