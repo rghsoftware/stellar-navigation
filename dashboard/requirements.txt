@@ -1,5 +1,0 @@
-flask==3.0.0
-flask-socketio==5.3.6
-python-socketio==5.11.0
-gpiozero==2.0.1
-lgpio==0.2.2.0

@@ -164,14 +164,12 @@ sudo apt install -y \
     build-essential \
     cmake \
     git \
-    python3-pip \
-    python3-venv \
-    htop \
-    vim
+    btop \
+    nvim
 
 # Serial communication tools
 sudo apt install -y \
-    minicom \
+    tio \
     screen \
     cu
 
@@ -182,6 +180,12 @@ sudo apt install -y \
     libffi-dev \
     python3-dev \
     i2c-tools
+
+# Install uv (modern Python package manager - much faster than pip)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Reload shell to get uv in PATH
+source ~/.bashrc
 ```
 
 ---
@@ -193,7 +197,7 @@ sudo apt install -y \
 **Edit boot configuration:**
 
 ```bash
-sudo nano /boot/firmware/config.txt
+sudo vi /boot/firmware/config.txt
 ```
 
 **Add at end of file:**
@@ -206,23 +210,25 @@ enable_uart=1
 dtoverlay=disable-bt
 ```
 
-**Save and exit** (Ctrl+X, Y, Enter)
+**Save and exit** (`:wq<Enter>`)
 
-### Disable Serial Console
+### Disable Serial Console & Enable I2C
 
 ```bash
 sudo raspi-config
 ```
 
-**Navigate:**
+**Navigate and configure:**
 
 ```
 3 Interface Options
   → I6 Serial Port
     → "Login shell over serial?" → No
     → "Serial port hardware enabled?" → Yes
-  → Finish
-  → Reboot? → Yes
+  → I5 I2C
+    → Enable? → Yes
+
+Finish → Reboot? → Yes
 ```
 
 ### Verify UART
@@ -230,15 +236,14 @@ sudo raspi-config
 ```bash
 # After reboot, check device exists
 ls -l /dev/ttyAMA0
+# Should show: crw-rw---- 1 root dialout ... /dev/ttyAMA0
 
-# Should show:
-# crw-rw---- 1 root dialout ... /dev/ttyAMA0
+# Add user to dialout and gpio groups (for UART and GPIO access)
+sudo usermod -a -G dialout,gpio $USER
 
-# Add user to dialout group
-sudo usermod -a -G dialout $USER
-
-# Log out and back in, or:
+# Apply group changes without logout:
 newgrp dialout
+newgrp gpio
 ```
 
 **Test UART loopback:**
@@ -271,11 +276,12 @@ sudo apt install -y python3-lgpio python3-gpiozero
 python3 -c "import lgpio; print(f'lgpio version: {lgpio.version()}')"
 ```
 
-**Add user to gpio group:**
+**Permissions:**
 
 ```bash
-sudo usermod -a -G gpio $USER
-newgrp gpio
+# GPIO group already added during UART setup
+# Verify membership:
+groups | grep -E 'dialout|gpio'
 ```
 
 ### GPIO Pin Reference
@@ -293,24 +299,10 @@ newgrp gpio
 
 ## I2C Configuration
 
-### Enable I2C
+### Configure I2C Speed (Optional)
 
 ```bash
-sudo raspi-config
-```
-
-**Navigate:**
-
-```
-3 Interface Options
-  → I5 I2C
-    → Enable? → Yes
-```
-
-**Increase I2C speed (optional):**
-
-```bash
-sudo nano /boot/firmware/config.txt
+sudo vi /boot/firmware/config.txt
 ```
 
 **Add:**
@@ -360,7 +352,7 @@ systemctl list-units --type=service --state=running
 ⚠️ **Warning**: Requires active cooling. Monitor temperatures.
 
 ```bash
-sudo nano /boot/firmware/config.txt
+sudo vi /boot/firmware/config.txt
 ```
 
 **Add (use cautiously):**
@@ -373,21 +365,6 @@ arm_freq=2400
 # Monitor with: vcgencmd measure_temp
 ```
 
-### GPU Memory Split
-
-```bash
-# Reduce GPU memory for headless operation
-sudo raspi-config
-```
-
-**Navigate:**
-
-```
-4 Performance Options
-  → P2 GPU Memory
-    → Set to: 16 (minimum for headless)
-```
-
 ---
 
 ## Python Environment
@@ -395,49 +372,19 @@ sudo raspi-config
 ### Create Virtual Environment
 
 ```bash
-# Create workspace
-mkdir -p ~/workspace
+# Clone project repository
 cd ~/workspace
+git clone <your-repo-url> stellar-navigation
 
-# Create virtual environment
-python3 -m venv starnav-env
+# Install dashboard dependencies with uv
+cd ~/workspace/stellar-navigation/dashboard
+uv sync
 
-# Activate
-source starnav-env/bin/activate
-
-# Upgrade pip
-pip install --upgrade pip
-
-# Install required packages
-pip install \
-    flask \
-    flask-socketio \
-    python-socketio \
-    gpiozero \
-    lgpio \
-    pyserial
+# Verify installation
+uv run python -c "import flask; print('Dependencies installed successfully')"
 ```
 
-**Create activation script:**
-
-```bash
-nano ~/activate-starnav.sh
-```
-
-**Content:**
-
-```bash
-#!/bin/bash
-source ~/workspace/starnav-env/bin/activate
-cd ~/workspace/stellar-navigation
-echo "Stellar Navigation environment activated"
-```
-
-**Make executable:**
-
-```bash
-chmod +x ~/activate-starnav.sh
-```
+**Note:** `uv` automatically creates and manages a virtual environment in `.venv/` - no need to manually create one!
 
 ---
 
@@ -473,7 +420,7 @@ mkdir -p ~/workspace/stellar-navigation/{docs,scripts,dashboard,logs}
 **cFS service:**
 
 ```bash
-sudo nano /etc/systemd/system/cfs-starnav.service
+sudo vi /etc/systemd/system/cfs-starnav.service
 ```
 
 **Content:**
@@ -498,7 +445,7 @@ WantedBy=multi-user.target
 **Python bridge service:**
 
 ```bash
-sudo nano /etc/systemd/system/starnav-bridge.service
+sudo vi /etc/systemd/system/starnav-bridge.service
 ```
 
 **Content:**
@@ -546,7 +493,7 @@ sudo systemctl enable starnav-bridge.service
 **For Ethernet:**
 
 ```bash
-sudo nano /etc/dhcpcd.conf
+sudo vi /etc/dhcpcd.conf
 ```
 
 **Add:**
@@ -664,12 +611,10 @@ gzip starnav-backup.img
 
 ```bash
 # Check group membership
-groups
+groups | grep -E 'dialout|gpio'
 
-# Should show 'dialout' - if not:
-sudo usermod -a -G dialout $USER
-
-# Log out and back in
+# If missing, re-run usermod from UART setup section
+# Then log out and back in
 ```
 
 ### Issue: GPIO not working
@@ -677,14 +622,12 @@ sudo usermod -a -G dialout $USER
 **Solutions:**
 
 ```bash
-# Verify lgpio installed
+# Verify lgpio installed and check permissions
 python3 -c "import lgpio"
-
-# Check gpio group
 groups | grep gpio
 
-# Install if missing
-sudo apt install python3-lgpio
+# If missing: sudo apt install python3-lgpio
+# If not in gpio group, re-run usermod from UART setup section
 ```
 
 ### Issue: High temperature

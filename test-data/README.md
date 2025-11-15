@@ -6,8 +6,12 @@ Python scripts to create test scenarios using Hipparcos catalog.
 
 ```bash
 cd generator
-pip install -r requirements.txt
-python3 generate_scenarios.py
+
+# Install dependencies with uv (faster than pip)
+uv sync
+
+# Run generator
+uv run python generate_scenarios.py
 ```
 
 ## Scenarios

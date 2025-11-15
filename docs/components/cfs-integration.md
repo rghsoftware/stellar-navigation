@@ -11,6 +11,7 @@
 This guide covers configuring cFS for the Stellar Navigation project and creating the STARNAV_APP custom application to receive attitude data from the STM32 and publish it to the Software Bus.
 
 **Repository Architecture:**
+
 - cFS is included as a git submodule (NASA's code, unmodified)
 - Mission-specific files live in `cfs-mission/` directory
 - Build configuration and custom apps symlinked into `cfs/` for compilation
@@ -37,19 +38,19 @@ graph TD
     A --> D[firmware/]
     A --> E[dashboard/]
     A --> F[docs/]
-    
+
     B --> G[apps/starnav/]
     B --> H[Makefile]
     B --> I[sample_defs/]
-    
+
     C --> J[Makefile symlink]
     C --> K[sample_defs symlink]
     C --> L[apps/starnav symlink]
-    
+
     J -.->|points to| H
     K -.->|points to| I
     L -.->|points to| G
-    
+
     style A fill:#66bb6a
     style B fill:#4fc3f7
     style C fill:#ffeb3b
@@ -76,6 +77,7 @@ cd ~/workspace/stellar-navigation
 ```
 
 **What the setup script does:**
+
 1. Initializes cFS submodule (`git submodule update --init --recursive`)
 2. Creates symlink: `cfs/Makefile` → `../cfs-mission/Makefile`
 3. Creates symlink: `cfs/sample_defs` → `../cfs-mission/sample_defs`
@@ -152,6 +154,7 @@ ln -s ../../cfs-mission/apps/starnav cfs/apps/starnav
 **Architecture**: All mission-specific files live in `cfs-mission/` and are tracked by git normally.
 
 **How this works:**
+
 1. `cfs-mission/` contains your Makefile, sample_defs, and custom apps
 2. Symlinks in `cfs/` point to files in `cfs-mission/`
 3. cFS submodule `.gitignore` ignores the symlinks (they're not tracked by the submodule)
@@ -173,6 +176,7 @@ git push
 ```
 
 **Result:**
+
 - ✅ Clean separation: NASA code in `cfs/`, your code in `cfs-mission/`
 - ✅ cFS submodule stays pristine (never modified)
 - ✅ No conflicts when updating cFS submodule
@@ -195,7 +199,7 @@ nano cfs-mission/sample_defs/targets.cmake
 
 # Mission-global apps (available to all CPUs)
 # Note: Don't duplicate apps here if they're in cpu1_APPLIST
-# list(APPEND MISSION_GLOBAL_APPLIST)
+list(APPEND MISSION_GLOBAL_APPLIST sample_app sample_lib)
 
 # Define CPU targets
 list(APPEND MISSION_CPUNAMES cpu1)

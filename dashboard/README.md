@@ -12,16 +12,19 @@ Web-based visualization and control interface.
 ## Setup
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# Install dependencies with uv (faster than pip)
+uv sync
 ```
 
 ## Running
 
 ```bash
-source venv/bin/activate
-python3 app.py
+# Run with uv
+uv run python app.py
+
+# Or activate the virtual environment
+source .venv/bin/activate
+python app.py
 ```
 
 Access at: http://localhost:5000

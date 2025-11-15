@@ -62,16 +62,13 @@ dashboard/
 ### Python Dependencies
 
 ```bash
-cd ~/workspace
-source starnav-env/bin/activate
+cd ~/workspace/stellar-navigation/dashboard
 
-pip install \
-    flask \
-    flask-socketio \
-    python-socketio \
-    gpiozero \
-    lgpio \
-    pyserial
+# Install dependencies with uv (significantly faster than pip)
+uv sync
+
+# Verify installation
+uv run python -c "import flask; print('Flask installed successfully')"
 ```
 
 ---
@@ -522,8 +519,13 @@ if __name__ == '__main__':
 
 ```bash
 cd ~/workspace/stellar-navigation/dashboard
-source ~/workspace/starnav-env/bin/activate
-python3 cfs_bridge.py
+
+# Run with uv
+uv run python cfs_bridge.py
+
+# Or activate virtual environment first
+source .venv/bin/activate
+python cfs_bridge.py
 ```
 
 ✅ **Expected output:**

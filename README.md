@@ -58,11 +58,14 @@ cd cfs && make SIMULATION=native prep && make -j$(nproc) && make install
 # 3. Build firmware (future)
 cd ../firmware && make flash
 
-# 4. Run system
-cd ~/workspace/stellar-navigation/cfs/build/exe/cpu1 && ./core-cpu1 &
-cd ~/workspace/stellar-navigation/dashboard && python3 cfs_bridge.py
+# 4. Install dashboard dependencies with uv
+cd ~/workspace/stellar-navigation/dashboard && uv sync
 
-# 5. Open browser: http://localhost:5000
+# 5. Run system
+cd ~/workspace/stellar-navigation/cfs/build/exe/cpu1 && ./core-cpu1 &
+cd ~/workspace/stellar-navigation/dashboard && uv run python cfs_bridge.py
+
+# 6. Open browser: http://localhost:5000
 ```
 
 ---

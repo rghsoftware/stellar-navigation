@@ -25,12 +25,12 @@ fi
 # Python dashboard
 echo "🐍 Setting up Python environment..."
 cd dashboard
-if [ ! -d venv ]; then
-    python3 -m venv venv
+if command -v uv &> /dev/null; then
+    uv sync
+else
+    echo "❌ uv not found! Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    exit 1
 fi
-source venv/bin/activate
-pip install -q -r requirements.txt
-deactivate
 cd ..
 
 echo "✅ Build complete!"
