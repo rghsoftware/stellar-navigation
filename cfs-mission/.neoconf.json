@@ -1,0 +1,55 @@
+{
+	"neoconf": "1.0.0",
+	"lspconfig": {
+		"clangd": {
+			"cmd": [
+				"clangd",
+				"--background-index",
+				"--clang-tidy",
+				"--header-insertion=iwyu",
+				"--completion-style=detailed",
+				"--function-arg-placeholders",
+				"--fallback-style=llvm"
+			],
+			"init_options": {
+				"clangdFileStatus": true,
+				"usePlaceholders": true,
+				"completeUnimported": true,
+				"semanticHighlighting": true
+			},
+			"filetypes": ["c", "h"]
+		}
+	},
+	"plugins": {
+		"nvim-treesitter": {
+			"ensure_installed": ["c", "cmake", "markdown"],
+			"highlight": {
+				"enable": true
+			},
+			"indent": {
+				"enable": true
+			}
+		}
+	},
+	"settings": {
+		"c_cpp": {
+			"intelliSenseEngine": "clangd",
+			"cStandard": "c11",
+			"cppStandard": "c++17"
+		}
+	},
+	"format": {
+		"enabled": true,
+		"formatters": {
+			"c": ["clang-format"],
+			"h": ["clang-format"]
+		}
+	},
+	"diagnostics": {
+		"neomake": {
+			"c": {
+				"makers": ["clang"]
+			}
+		}
+	}
+}

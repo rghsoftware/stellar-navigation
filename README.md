@@ -66,8 +66,11 @@ cd ~/workspace/stellar-navigation/dashboard && python3 cfs_bridge.py
 
 ```text
 stellar-navigation/
-├── cfs/                       # NASA Core Flight System (submodule)
-├── cfs-apps/starnav/          # Custom STARNAV application
+├── cfs/                       # NASA Core Flight System (submodule, pristine)
+├── cfs-mission/               # Mission-specific files
+│   ├── Makefile               # Build configuration
+│   ├── sample_defs/           # Target configuration
+│   └── apps/starnav/          # Custom STARNAV application
 ├── dashboard/                 # Web UI
 │   ├── cfs_bridge.py          # Python middleware
 │   ├── servo_control.py       # Gimbal control

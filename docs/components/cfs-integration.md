@@ -11,9 +11,9 @@
 This guide covers configuring cFS for the Stellar Navigation project and creating the STARNAV_APP custom application to receive attitude data from the STM32 and publish it to the Software Bus.
 
 **Repository Architecture:**
-- cFS is included as a git submodule (NASA's code)
-- Custom build configuration (`Makefile`, `sample_defs/`) tracked in parent repo
-- Custom apps (`starnav`) live in `cfs-apps/` and symlinked into `cfs/apps/`
+- cFS is included as a git submodule (NASA's code, unmodified)
+- Mission-specific files live in `cfs-mission/` directory
+- Build configuration and custom apps symlinked into `cfs/` for compilation
 
 **What cFS provides:**
 
@@ -31,24 +31,33 @@ This guide covers configuring cFS for the Stellar Navigation project and creatin
 
 ```mermaid
 graph TD
-    A[stellar-navigation/] --> B[cfs-apps/]
+    A[stellar-navigation/] --> B[cfs-mission/]
     A --> C[cfs/]
     A --> D[firmware/]
     A --> E[dashboard/]
     A --> F[docs/]
     
-    B --> G[starnav/]
-    C --> H[apps/]
-    H --> I[starnav symlink]
+    B --> G[apps/starnav/]
+    B --> H[Makefile]
+    B --> I[sample_defs/]
     
-    I -.->|points to| G
+    C --> J[Makefile symlink]
+    C --> K[sample_defs symlink]
+    C --> L[apps/starnav symlink]
+    
+    J -.->|points to| H
+    K -.->|points to| I
+    L -.->|points to| G
     
     style A fill:#66bb6a
-    style G fill:#4fc3f7
-    style I fill:#ffa726,stroke-dasharray: 5 5
+    style B fill:#4fc3f7
+    style C fill:#ffeb3b
+    style J fill:#ffa726,stroke-dasharray: 5 5
+    style K fill:#ffa726,stroke-dasharray: 5 5
+    style L fill:#ffa726,stroke-dasharray: 5 5
 ```
 
-**Key principle**: Custom apps live in `stellar-navigation/cfs-apps/`, NOT in the cFS submodule.
+**Key principle**: Mission-specific files live in `stellar-navigation/cfs-mission/`, NOT in the cFS submodule.
 
 ### Clone Repository
 
@@ -67,17 +76,15 @@ git submodule update --init --recursive
 # Verify cFS is present
 ls cfs/cfe cfs/osal cfs/psp
 
-# Verify custom build config is present
-ls cfs/Makefile cfs/sample_defs/targets.cmake
+# Verify mission config is present
+ls cfs-mission/Makefile cfs-mission/sample_defs/targets.cmake
+ls -l cfs/Makefile cfs/sample_defs  # Should show symlinks
 ```
 
 **What gets cloned:**
-- ✅ cFS submodule (NASA's code)
-- ✅ Your custom `cfs/Makefile` (tracked in parent repo)
-- ✅ Your custom `cfs/sample_defs/` (tracked in parent repo)
-- ✅ Your custom apps in `cfs-apps/starnav/`
-
-**Note**: The `cfs/Makefile` and `cfs/sample_defs/` are tracked by the parent repository using `git add --force`, not by the cFS submodule.
+- ✅ cFS submodule (NASA's code, pristine)
+- ✅ Your mission files in `cfs-mission/` (Makefile, sample_defs, apps)
+- ✅ Symlinks automatically created from `cfs/` → `cfs-mission/`
 
 ⏱️ **Time**: 5 minutes
 
@@ -96,31 +103,39 @@ cfs/
 └── tools/        # Ground system tools
 ```
 
-**Your custom apps directory:**
+**Your mission directory:**
 
 ```
-stellar-navigation/cfs-apps/
-└── starnav/      # Your custom flight software (tracked in your repo)
-    ├── fsw/
-    │   ├── mission_inc/
-    │   ├── platform_inc/
-    │   ├── src/
-    │   └── tables/
-    └── CMakeLists.txt
+stellar-navigation/cfs-mission/
+├── Makefile              # Build configuration
+├── sample_defs/          # Target & platform configuration
+│   ├── targets.cmake
+│   ├── cpu1_cfe_es_startup.scr
+│   └── ...
+└── apps/
+    └── starnav/          # Your custom flight software
+        ├── fsw/
+        │   ├── mission_inc/
+        │   ├── platform_inc/
+        │   ├── src/
+        │   └── tables/
+        └── CMakeLists.txt
 ```
 
 ### Configure Build
 
-**Copy sample configuration:**
+**Initial setup (if not already present):**
 
 ```bash
-cd ~/workspace/stellar-navigation/cfs
+cd ~/workspace/stellar-navigation
 
-# Copy Makefile (if not already present)
-cp cfe/cmake/Makefile.sample Makefile
+# Copy sample configuration to mission directory
+cp cfs/cfe/cmake/Makefile.sample cfs-mission/Makefile
+cp -r cfs/cfe/cmake/sample_defs cfs-mission/
 
-# Copy configuration templates (if not already present)
-cp -r cfe/cmake/sample_defs sample_defs
+# Create symlinks so cFS build finds them
+ln -s ../cfs-mission/Makefile cfs/Makefile
+ln -s ../cfs-mission/sample_defs cfs/sample_defs
 ```
 
 **Note**: These files should already exist in your repository. Only copy if starting fresh.
@@ -129,21 +144,21 @@ cp -r cfe/cmake/sample_defs sample_defs
 
 ### 📝 Version Control for Build Configuration
 
-**Important**: `Makefile` and `sample_defs/` live inside the `cfs/` submodule directory but contain **your project-specific configuration**.
+**Architecture**: All mission-specific files live in `cfs-mission/` and are tracked by git normally.
 
 **How this works:**
-1. cFS submodule `.gitignore` ignores these files (they're meant to be customized)
-2. Your parent repo tracks them using `git add --force`
-3. This keeps your custom build config in your repo without modifying the submodule
+1. `cfs-mission/` contains your Makefile, sample_defs, and custom apps
+2. Symlinks in `cfs/` point to files in `cfs-mission/`
+3. cFS submodule `.gitignore` ignores the symlinks (they're not tracked by the submodule)
+4. Your parent repo tracks `cfs-mission/` normally
 
 **To track your customized build configuration:**
 
 ```bash
 cd ~/workspace/stellar-navigation
 
-# Force add files inside submodule directory
-git add --force cfs/Makefile
-git add --force cfs/sample_defs/
+# Add mission files (normal git add, no --force needed)
+git add cfs-mission/
 
 # Commit your custom configuration
 git commit -m "Add custom cFS build configuration for stellar-navigation"
@@ -152,25 +167,20 @@ git commit -m "Add custom cFS build configuration for stellar-navigation"
 git push
 ```
 
-**Why `--force`?**
-- Normal `git add` won't track files inside a submodule directory
-- `--force` bypasses this and tracks them in the parent repo
-- cFS submodule remains unchanged (doesn't see these files)
-
 **Result:**
-- ✅ Your custom `targets.cmake` is version-controlled
-- ✅ Fresh clone includes build configuration
-- ✅ cFS submodule stays clean
+- ✅ Clean separation: NASA code in `cfs/`, your code in `cfs-mission/`
+- ✅ cFS submodule stays pristine (never modified)
 - ✅ No conflicts when updating cFS submodule
+- ✅ All mission files version-controlled together
 
 ---
 
 **Edit target configuration:**
 
-**File**: `~/workspace/stellar-navigation/cfs/sample_defs/targets.cmake`
+**File**: `~/workspace/stellar-navigation/cfs-mission/sample_defs/targets.cmake`
 
 ```bash
-nano sample_defs/targets.cmake
+nano cfs-mission/sample_defs/targets.cmake
 ```
 
 **Replace with:**
@@ -278,35 +288,35 @@ SCH_LAB: Initialized
 
 ### Important: App Location Strategy
 
-**Your custom apps live in your repository, NOT in the cFS submodule.**
+**Your custom apps live in `cfs-mission/apps/`, NOT in the cFS submodule.**
 
 The starnav app is located at:
 
-- **Source**: `~/workspace/stellar-navigation/cfs-apps/starnav/`
-- **Symlink**: `~/workspace/stellar-navigation/cfs/apps/starnav` → `../../cfs-apps/starnav`
+- **Source**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/`
+- **Symlink**: `~/workspace/stellar-navigation/cfs/apps/starnav` → `../../cfs-mission/apps/starnav`
 
 This approach keeps your flight software in your repo while allowing cFS to build it.
 
 ### Create App Structure
 
 ```bash
-# Navigate to YOUR repository's apps directory (NOT cfs/apps!)
-cd ~/workspace/stellar-navigation/cfs-apps
+# Navigate to YOUR mission apps directory (NOT cfs/apps!)
+cd ~/workspace/stellar-navigation/cfs-mission/apps
 
 # Create directory structure (if not already present)
 mkdir -p starnav/fsw/{mission_inc,platform_inc,src,tables}
 
 # Create symlink so cFS can find it
 cd ~/workspace/stellar-navigation/cfs/apps
-ln -s ../../cfs-apps/starnav starnav
+ln -s ../../cfs-mission/apps/starnav starnav
 
-# Work in your repo's version
-cd ~/workspace/stellar-navigation/cfs-apps/starnav
+# Work in your mission version
+cd ~/workspace/stellar-navigation/cfs-mission/apps/starnav
 ```
 
 ### Message ID Definitions
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/fsw/platform_inc/starnav_msgid.h`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/platform_inc/starnav_msgid.h`
 
 **Create `fsw/platform_inc/starnav_msgid.h`:** (note: singular, not plural)
 
@@ -336,7 +346,7 @@ cd ~/workspace/stellar-navigation/cfs-apps/starnav
 
 ### Message Structures
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/fsw/mission_inc/starnav_msg.h`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/mission_inc/starnav_msg.h`
 
 **Create `fsw/mission_inc/starnav_msg.h`:**
 
@@ -417,7 +427,7 @@ typedef struct {
 
 ### Application Header
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/fsw/src/starnav_app.h`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_app.h`
 
 **Create `fsw/src/starnav_app.h`:**
 
@@ -479,7 +489,7 @@ void  STARNAV_ProcessPacket(uint8_t *packet, uint16_t length);
 
 ### UART Device Driver
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/fsw/src/starnav_device.c`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_device.c`
 
 **Create `fsw/src/starnav_device.c`:**
 
@@ -640,7 +650,7 @@ void STARNAV_ProcessPacket(uint8_t *packet, uint16_t length)
 
 ### Main Application
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/fsw/src/starnav_app.c`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_app.c`
 
 **Create `fsw/src/starnav_app.c`:**
 
@@ -779,7 +789,7 @@ void STARNAV_ProcessCommandPacket(CFE_SB_Buffer_t *SBBufPtr)
 
 ### CMake Configuration
 
-**Location**: `~/workspace/stellar-navigation/cfs-apps/starnav/CMakeLists.txt`
+**Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/CMakeLists.txt`
 
 **Create `CMakeLists.txt`:**
 
@@ -808,17 +818,19 @@ target_include_directories(starnav PUBLIC
 
 **Prerequisites:**
 
-1. STARNAV app exists at `~/workspace/stellar-navigation/cfs-apps/starnav/`
-2. Symlink created: `~/workspace/stellar-navigation/cfs/apps/starnav` → `../../cfs-apps/starnav`
+1. STARNAV app exists at `~/workspace/stellar-navigation/cfs-mission/apps/starnav/`
+2. Symlink created: `~/workspace/stellar-navigation/cfs/apps/starnav` → `../../cfs-mission/apps/starnav`
 
 **Verify symlink:**
 
 ```bash
-ls -la ~/workspace/stellar-navigation/cfs/apps/starnav
-# Should show: starnav -> ../../cfs-apps/starnav
+cd ~/workspace/stellar-navigation/cfs/apps
+ls -l starnav
+
+# Should show: starnav -> ../../cfs-mission/apps/starnav
 ```
 
-**Edit `~/workspace/stellar-navigation/cfs/sample_defs/targets.cmake`:**
+**Edit `~/workspace/stellar-navigation/cfs-mission/sample_defs/targets.cmake`:**
 
 ```cmake
 # Add starnav to cpu1 app list
@@ -836,7 +848,7 @@ CFE_APP, starnav,     STARNAV_Main,    STARNAV,   50,  16384, 0x0, 0;
 ```
 
 **Note**: This file is in the build output, not the source. You may need to edit the template at:
-`~/workspace/stellar-navigation/cfs/sample_defs/cpu1_cfe_es_startup.scr`
+`~/workspace/stellar-navigation/cfs-mission/sample_defs/cpu1_cfe_es_startup.scr`
 
 ### Rebuild cFS
 
