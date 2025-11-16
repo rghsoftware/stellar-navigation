@@ -77,7 +77,7 @@ typedef struct
 
     uint32_t DeviceTimestamp; /**< Device timestamp in milliseconds */
 
-    CFE_TIME_SysTime_t CFE_Timestap; /**< cFE reception timestamp */
+    CFE_TIME_SysTime_t CFE_Timestamp; /**< cFE reception timestamp */
 
 } STARNAV_AttitudeTlm_t;
 

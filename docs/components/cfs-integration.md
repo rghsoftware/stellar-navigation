@@ -8,7 +8,8 @@
 
 ## Overview
 
-This guide covers configuring cFS for the Stellar Navigation project and creating the STARNAV_APP custom application to receive attitude data from the STM32 and publish it to the Software Bus.
+This guide covers configuring cFS for the Stellar Navigation project and creating the STARNAV_APP custom application to
+receive attitude data from the STM32 and publish it to the Software Bus.
 
 **Repository Architecture:**
 
@@ -98,7 +99,7 @@ ls -l cfs/Makefile cfs/sample_defs cfs/apps/starnav
 
 **cFS directory structure:**
 
-```
+```text
 cfs/
 ├── cfe/          # Core Flight Executive
 ├── osal/         # Operating System Abstraction Layer
@@ -113,7 +114,7 @@ cfs/
 
 **Your mission directory:**
 
-```
+```text
 stellar-navigation/cfs-mission/
 ├── Makefile              # Build configuration
 ├── sample_defs/          # Target & platform configuration
@@ -188,34 +189,15 @@ git push
 
 **File**: `~/workspace/stellar-navigation/cfs-mission/sample_defs/targets.cmake`
 
-```bash
-nano cfs-mission/sample_defs/targets.cmake
-```
+**Key configuration elements:**
 
-**Replace with:**
+- **Mission-global apps**: Apps available to all CPUs (e.g., `sample_app`, `sample_lib`)
+- **CPU targets**: Define processing units (typically `cpu1`)
+- **App list**: Which apps run on each CPU (e.g., `ci_lab`, `to_lab`, `sch_lab`)
+- **Platform Support Package**: Hardware abstraction layer (e.g., `pc-linux` for Raspberry Pi)
+- **Build options**: Enable/disable features like unit tests
 
-```cmake
-# Raspberry Pi 5 ARM64 target configuration
-
-# Mission-global apps (available to all CPUs)
-# Note: Don't duplicate apps here if they're in cpu1_APPLIST
-list(APPEND MISSION_GLOBAL_APPLIST sample_app sample_lib)
-
-# Define CPU targets
-list(APPEND MISSION_CPUNAMES cpu1)
-
-# CPU1 configuration
-set(cpu1_PROCESSORID 1)
-set(cpu1_APPLIST ci_lab to_lab sch_lab)
-set(cpu1_FILELIST cfe_es_startup.scr)
-# Note: cpu1_SYSTEM not set - will use native toolchain when built with SIMULATION=native
-
-# Platform selection for Raspberry Pi
-set(cpu1_PSP pc-linux)
-
-# Build options
-set(ENABLE_UNIT_TESTS FALSE)
-```
+See actual file for Raspberry Pi 5 ARM64 configuration.
 
 ### Build cFS
 
@@ -297,7 +279,7 @@ SCH_LAB: Initialized
 
 ### Important: App Location Strategy
 
-**Your custom apps live in `cfs-mission/apps/`, NOT in the cFS submodule.**
+**Custom apps live in `cfs-mission/apps/`, NOT in the cFS submodule.**
 
 The starnav app is located at:
 
@@ -327,497 +309,206 @@ cd ~/workspace/stellar-navigation/cfs-mission/apps/starnav
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/CMakeLists.txt`
 
-**Create `CMakeLists.txt`:**
+**Purpose**: Tells cFS build system how to compile the app
 
-```cmake
-cmake_minimum_required(VERSION 3.5)
-project(CFS_STARNAV C)
+**Key elements:**
 
-set(APP_SRC_FILES
-    fsw/src/starnav_app.c
-    fsw/src/starnav_device.c
-)
+- **Source files**: List all `.c` files (e.g., `starnav_app.c`, `starnav_device.c`)
+- **App registration**: `add_cfe_app()` registers with cFE framework
+- **Include directories**: Where to find header files (`mission_inc`, `platform_inc`)
 
-add_cfe_app(starnav ${APP_SRC_FILES})
-
-target_include_directories(starnav PUBLIC
-    fsw/mission_inc
-    fsw/platform_inc
-)
-```
+See actual file for STARNAV configuration.
 
 ### Message ID Definitions
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/platform_inc/starnav_msgid.h`
 
-**Create `fsw/platform_inc/starnav_msgid.h`:** (note: singular, not plural)
+**Purpose**: Unique identifiers for Software Bus message routing
 
-```c
-#ifndef STARNAV_MSGID_H
-#define STARNAV_MSGID_H
+**Message types:**
 
-/*
- * Message IDs for STARNAV application
- * Must be unique across all cFS apps
- *
- * Command MIDs: 0x18xx range
- * Telemetry MIDs: 0x08xx range
- */
+```mermaid
+graph TD
+    A[Ground System] -->|STARNAV_CMD_MID 0x1880| B[STARNAV App]
+    C[Scheduler] -->|STARNAV_SEND_HK_MID 0x1881| B
 
-/* Command Message IDs */
-#define STARNAV_CMD_MID         0x1880
-#define STARNAV_SEND_HK_MID     0x1881
+    B -->|STARNAV_HK_TLM_MID 0x0880| D[Telemetry Output]
+    B -->|STARNAV_ATTITUDE_MID 0x0881| D
+    B -->|STARNAV_STATUS_MID 0x0882| D
 
-/* Telemetry Message IDs */
-#define STARNAV_HK_TLM_MID      0x0880
-#define STARNAV_ATTITUDE_MID    0x0881
-#define STARNAV_STATUS_MID      0x0882
-
-#endif /* STARNAV_MSGID_H */
+    style A fill:#90caf9
+    style C fill:#90caf9
+    style B fill:#81c784
+    style D fill:#ffb74d
 ```
+
+**Key concepts:**
+
+- **Command MIDs** (`0x18xx`): Incoming commands to the app
+- **Telemetry MIDs** (`0x08xx`): Outgoing data from the app
+- **Must be unique** across all mission apps
+
+See actual file for STARNAV message ID assignments.
 
 ### Message Structures
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/mission_inc/starnav_msg.h`
 
-**Create `fsw/mission_inc/starnav_msg.h`:**
+**Purpose**: Defines data structures sent over Software Bus
 
-```c
-#ifndef STARNAV_MSG_H
-#define STARNAV_MSG_H
+**STARNAV message types:**
 
-#include "cfe.h"
+| Message Type            | Contents                                         | Purpose                                 |
+| ----------------------- | ------------------------------------------------ | --------------------------------------- |
+| `STARNAV_AttitudeTlm_t` | Quaternion, Euler angles, confidence, star count | Primary attitude data from star tracker |
+| `STARNAV_StatusTlm_t`   | System state, processing time, packet stats      | Device health monitoring                |
+| `STARNAV_HkTlm_t`       | Command counters, error counts                   | Standard housekeeping                   |
+| `STARNAV_NoArgsCmd_t`   | Command header only                              | Simple commands                         |
 
-/*
- * Attitude Data Message
- * Matches STM32 UART packet format
- */
-typedef struct {
-    CFE_MSG_TelemetryHeader_t TlmHeader;
+**Key design points:**
 
-    /* Attitude quaternion (w, x, y, z) */
-    float Quaternion[4];
+- **cFE headers**: All messages include standard cFE headers for routing
+- **Timestamps**: cFE timestamp added when data received from hardware
+- **Binary compatibility**: Structures must match between sender/receiver
+- **Alignment**: C struct padding considerations for different platforms
 
-    /* Euler angles in degrees (roll, pitch, yaw) */
-    float EulerAngles[3];
-
-    /* Confidence (0.0 to 1.0) */
-    float Confidence;
-
-    /* Number of stars matched */
-    uint8_t NumStarsMatched;
-
-    /* Operating mode */
-    uint8_t OperatingMode;  // 0=idle, 1=tracking, 2=lost-in-space
-
-    /* Device timestamp (milliseconds) */
-    uint32_t DeviceTimestamp;
-
-    /* cFE reception timestamp */
-    CFE_TIME_SysTime_t CFE_Timestamp;
-
-} STARNAV_AttitudeTlm_t;
-
-/*
- * Status Telemetry Message
- */
-typedef struct {
-    CFE_MSG_TelemetryHeader_t TlmHeader;
-
-    uint8_t  SystemState;
-    uint8_t  StarsVisible;
-    uint8_t  StarsMatched;
-    float    ProcessingTimeMs;
-    uint32_t DeviceUptime;
-    uint16_t PacketsReceived;
-    uint16_t PacketErrors;
-
-} STARNAV_StatusTlm_t;
-
-/*
- * Housekeeping Telemetry Message
- */
-typedef struct {
-    CFE_MSG_TelemetryHeader_t TlmHeader;
-
-    uint8_t  CommandCounter;
-    uint8_t  CommandErrorCounter;
-    uint16_t DeviceErrors;
-    uint32_t LastUpdateTime;
-
-} STARNAV_HkTlm_t;
-
-/*
- * No-Args Command
- */
-typedef struct {
-    CFE_MSG_CommandHeader_t CmdHeader;
-} STARNAV_NoArgsCmd_t;
-
-#endif /* STARNAV_MSG_H */
-```
+See actual file for complete structure definitions matching STM32 UART packet format.
 
 ### Application Header
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_app.h`
 
-**Create `fsw/src/starnav_app.h`:**
+**Purpose**: Central definitions and declarations for the app
 
-```c
-#ifndef STARNAV_APP_H
-#define STARNAV_APP_H
+**Key components:**
 
-#include "cfe.h"
-#include "starnav_msg.h"
-#include "starnav_msgid.h"
+```mermaid
+graph TD
+    A[starnav_app.h] --> B[Performance IDs]
+    A --> C[Event IDs]
+    A --> D[Constants]
+    A --> E[Global Data Structure]
+    A --> F[Function Prototypes]
 
-/* Performance IDs */
-#define STARNAV_PERF_ID  91
+    E --> G[Software Bus Pipe]
+    E --> H[Run Status]
+    E --> I[Telemetry Buffers]
+    E --> J[Device Handle]
 
-/* Event IDs */
-#define STARNAV_INIT_INF_EID      1
-#define STARNAV_PIPE_ERR_EID      2
-#define STARNAV_SUB_ERR_EID       3
-#define STARNAV_DEV_ERR_EID       4
-#define STARNAV_DEV_INF_EID       5
-
-/* Pipe depths */
-#define STARNAV_PIPE_DEPTH  32
-
-/* Return codes */
-#define STARNAV_NO_DATA  1
-
-/* Application global data */
-typedef struct {
-    CFE_SB_PipeId_t  CommandPipe;
-    uint32           RunStatus;
-
-    /* Telemetry buffers */
-    STARNAV_HkTlm_t       HkTlm;
-    STARNAV_AttitudeTlm_t AttitudeTlm;
-    STARNAV_StatusTlm_t   StatusTlm;
-
-    /* Device handle */
-    int DeviceFd;
-
-} STARNAV_AppData_t;
-
-/* Global data declaration */
-extern STARNAV_AppData_t STARNAV_AppData;
-
-/* Function prototypes */
-void  STARNAV_Main(void);
-int32 STARNAV_Init(void);
-void  STARNAV_ProcessCommandPacket(CFE_SB_Buffer_t *SBBufPtr);
-void  STARNAV_ProcessDeviceData(void);
-
-/* Device functions */
-int32 STARNAV_InitDevice(void);
-int32 STARNAV_ReadDevice(void);
-void  STARNAV_ProcessPacket(uint8_t *packet, uint16_t length);
-
-#endif /* STARNAV_APP_H */
+    style A fill:#81c784
+    style E fill:#ffb74d
 ```
 
-### UART Device Driver
+**Global data structure** (`STARNAV_AppData_t`):
+
+- **CommandPipe**: Software Bus pipe for receiving commands
+- **RunStatus**: App lifecycle state (running/stopping)
+- **Telemetry buffers**: Pre-allocated message structures
+- **DeviceFd**: UART device file descriptor
+
+See actual file for complete definitions and STARNAV-specific constants.
+
+### Device Interface Module
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_device.c`
 
-**Create `fsw/src/starnav_device.c`:**
+**Purpose**: Interface with STM32 star tracker over UART
 
-```c
-#include "starnav_app.h"
-#include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
+**Key functions:**
 
-#define STARNAV_UART_DEVICE "/dev/ttyAMA0"
-#define STARNAV_UART_BAUD   B115200
-#define STARNAV_MAX_PACKET  128
+| Function                        | Purpose                                          |
+| ------------------------------- | ------------------------------------------------ |
+| `STARNAV_InitDevice()`          | Opens `/dev/ttyAMA0`, configures 115200 baud 8N1 |
+| `STARNAV_ReadDevice()`          | Polls UART for incoming data                     |
+| `STARNAV_ProcessPacket()`       | Parses framed packets, publishes to Software Bus |
+| `STARNAV_ConfigureUART_Linux()` | Platform-specific UART setup using termios       |
 
-/* Packet framing */
-#define SYNC_BYTE_1  0xAA
-#define SYNC_BYTE_2  0x55
-#define MSG_ATTITUDE 0x01
-#define MSG_STATUS   0x02
+**Data flow:**
 
-/* Initialize UART device */
-int32 STARNAV_InitDevice(void)
-{
-    struct termios options;
+```mermaid
+graph TD
+    A[STM32 Star Tracker] -->|UART 115200 8N1| B["/dev/ttyAMA0"]
+    B -->|OS_read| C[STARNAV_ReadDevice]
+    C -->|Byte stream| D[Packet Framing]
+    D -->|Sync: 0xAA 0x55| E[Complete Packet]
+    E -->|Parse| F[STARNAV_ProcessPacket]
+    F -->|memcpy to AttitudeTlm| G[Message Structure]
+    G -->|CFE_SB_TransmitMsg| H[Software Bus]
+    H --> I["Dashboard / Other Apps"]
 
-    /* Open UART device */
-    STARNAV_AppData.DeviceFd = open(STARNAV_UART_DEVICE,
-                                     O_RDWR | O_NOCTTY | O_NONBLOCK);
-
-    if (STARNAV_AppData.DeviceFd < 0) {
-        CFE_EVS_SendEvent(STARNAV_DEV_ERR_EID, CFE_EVS_EventType_ERROR,
-                         "Failed to open %s: %s",
-                         STARNAV_UART_DEVICE, strerror(errno));
-        return CFE_STATUS_EXTERNAL_RESOURCE_FAIL;
-    }
-
-    /* Get current settings */
-    if (tcgetattr(STARNAV_AppData.DeviceFd, &options) < 0) {
-        close(STARNAV_AppData.DeviceFd);
-        return CFE_STATUS_EXTERNAL_RESOURCE_FAIL;
-    }
-
-    /* Configure UART */
-    cfsetispeed(&options, STARNAV_UART_BAUD);
-    cfsetospeed(&options, STARNAV_UART_BAUD);
-
-    /* 8N1, no flow control, raw mode */
-    options.c_cflag |= (CLOCAL | CREAD);
-    options.c_cflag &= ~PARENB;
-    options.c_cflag &= ~CSTOPB;
-    options.c_cflag &= ~CSIZE;
-    options.c_cflag |= CS8;
-    options.c_cflag &= ~CRTSCTS;
-
-    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-    options.c_iflag &= ~(IXON | IXOFF | IXANY);
-    options.c_oflag &= ~OPOST;
-
-    /* Apply settings */
-    if (tcsetattr(STARNAV_AppData.DeviceFd, TCSANOW, &options) < 0) {
-        close(STARNAV_AppData.DeviceFd);
-        return CFE_STATUS_EXTERNAL_RESOURCE_FAIL;
-    }
-
-    CFE_EVS_SendEvent(STARNAV_DEV_INF_EID, CFE_EVS_EventType_INFORMATION,
-                     "UART device opened: %s", STARNAV_UART_DEVICE);
-
-    return CFE_SUCCESS;
-}
-
-/* Read from UART device */
-int32 STARNAV_ReadDevice(void)
-{
-    uint8_t buffer[STARNAV_MAX_PACKET];
-    ssize_t bytes_read;
-    static uint8_t packet_buffer[STARNAV_MAX_PACKET];
-    static int packet_index = 0;
-
-    /* Read available data (non-blocking) */
-    bytes_read = read(STARNAV_AppData.DeviceFd, buffer, sizeof(buffer));
-
-    if (bytes_read < 0) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            CFE_EVS_SendEvent(STARNAV_DEV_ERR_EID, CFE_EVS_EventType_ERROR,
-                             "UART read error: %s", strerror(errno));
-            return CFE_STATUS_EXTERNAL_RESOURCE_FAIL;
-        }
-        return STARNAV_NO_DATA;
-    }
-
-    if (bytes_read == 0) {
-        return STARNAV_NO_DATA;
-    }
-
-    /* Process bytes for packet framing */
-    for (int i = 0; i < bytes_read; i++) {
-        if (packet_index == 0 && buffer[i] == SYNC_BYTE_1) {
-            packet_buffer[packet_index++] = buffer[i];
-        }
-        else if (packet_index == 1) {
-            if (buffer[i] == SYNC_BYTE_2) {
-                packet_buffer[packet_index++] = buffer[i];
-            } else {
-                packet_index = 0;
-            }
-        }
-        else if (packet_index >= 2) {
-            packet_buffer[packet_index++] = buffer[i];
-
-            /* Check if we have complete packet */
-            if (packet_index >= 4) {
-                uint8_t msg_id = packet_buffer[2];
-                uint8_t length = packet_buffer[3];
-                uint16_t total_length = 4 + length + 2;  // header + payload + CRC
-
-                if (packet_index >= total_length) {
-                    STARNAV_ProcessPacket(packet_buffer, total_length);
-                    packet_index = 0;
-                }
-                else if (packet_index >= STARNAV_MAX_PACKET) {
-                    packet_index = 0;  // Reset on overflow
-                }
-            }
-        }
-    }
-
-    return CFE_SUCCESS;
-}
-
-/* Process complete packet */
-void STARNAV_ProcessPacket(uint8_t *packet, uint16_t length)
-{
-    uint8_t msg_id = packet[2];
-    uint8_t *payload = &packet[4];
-
-    /* TODO: Verify CRC */
-
-    STARNAV_AppData.StatusTlm.PacketsReceived++;
-
-    if (msg_id == MSG_ATTITUDE) {
-        /* Parse attitude data */
-        memcpy(&STARNAV_AppData.AttitudeTlm.Quaternion,
-               payload, sizeof(float) * 4);
-        memcpy(&STARNAV_AppData.AttitudeTlm.EulerAngles,
-               payload + sizeof(float) * 4, sizeof(float) * 3);
-
-        /* Add timestamp */
-        STARNAV_AppData.AttitudeTlm.CFE_Timestamp = CFE_TIME_GetTime();
-
-        /* Publish to Software Bus */
-        CFE_SB_TimeStampMsg(CFE_MSG_PTR(STARNAV_AppData.AttitudeTlm.TlmHeader));
-        CFE_SB_TransmitMsg(CFE_MSG_PTR(STARNAV_AppData.AttitudeTlm.TlmHeader),
-                          true);
-    }
-}
+    style A fill:#90caf9
+    style H fill:#81c784
+    style I fill:#ffb74d
 ```
 
-### Main Application
+**Packet framing protocol:**
+
+- **Sync bytes**: `0xAA 0x55` mark start of packet
+- **Message ID**: Identifies packet type (0x01=attitude, 0x02=status)
+- **Length field**: Payload size
+- **CRC**: Error detection (TODO: implement verification)
+
+**OSAL abstraction**: Uses `OS_OpenCreate()` and `OS_read()` for portability across operating systems.
+
+See actual file for complete UART configuration and packet parsing implementation.
+
+### Main Application Module
 
 **Location**: `~/workspace/stellar-navigation/cfs-mission/apps/starnav/fsw/src/starnav_app.c`
 
-**Create `fsw/src/starnav_app.c`:**
+**Purpose**: Core app logic and cFS framework integration
 
-```c
-#include "starnav_app.h"
-#include <string.h>
+**Key functions:**
 
-/* Application global data */
-STARNAV_AppData_t STARNAV_AppData;
+| Function                         | Purpose                                            |
+| -------------------------------- | -------------------------------------------------- |
+| `STARNAV_Main()`                 | Entry point, main processing loop                  |
+| `STARNAV_Init()`                 | Sets up Software Bus, registers events, opens UART |
+| `STARNAV_ProcessCommandPacket()` | Handles housekeeping requests                      |
+| `STARNAV_ProcessDeviceData()`    | Reads from UART device                             |
 
-/* Application entry point */
-void STARNAV_Main(void)
-{
-    int32 status;
-    CFE_SB_Buffer_t *SBBufPtr;
+**Application lifecycle:**
 
-    CFE_ES_PerfLogEntry(STARNAV_PERF_ID);
+```mermaid
+stateDiagram-v2
+    [*] --> Initialize
+    Initialize --> MainLoop: Success
+    Initialize --> Exit: Failure
 
-    /* Initialize application */
-    status = STARNAV_Init();
-    if (status != CFE_SUCCESS) {
-        STARNAV_AppData.RunStatus = CFE_ES_RunStatus_APP_ERROR;
-    }
+    MainLoop --> WaitForMessage: CFE_SB_ReceiveBuffer (100ms timeout)
+    WaitForMessage --> ProcessCommand: SEND_HK_MID received
+    WaitForMessage --> ReadDevice: Timeout (normal operation)
+    WaitForMessage --> Exit: Error
 
-    /* Main loop */
-    while (CFE_ES_RunLoop(&STARNAV_AppData.RunStatus)) {
-        CFE_ES_PerfLogExit(STARNAV_PERF_ID);
+    ProcessCommand --> PublishHK: Send housekeeping telemetry
+    ReadDevice --> ParseUART: Poll UART for attitude data
 
-        /* Wait for command (with timeout) */
-        status = CFE_SB_ReceiveBuffer(&SBBufPtr,
-                                     STARNAV_AppData.CommandPipe,
-                                     100);
+    PublishHK --> MainLoop
+    ParseUART --> MainLoop
 
-        CFE_ES_PerfLogEntry(STARNAV_PERF_ID);
-
-        if (status == CFE_SUCCESS) {
-            STARNAV_ProcessCommandPacket(SBBufPtr);
-        }
-        else if (status == CFE_SB_TIME_OUT) {
-            /* Normal timeout - read device data */
-            STARNAV_ProcessDeviceData();
-        }
-        else {
-            CFE_EVS_SendEvent(STARNAV_PIPE_ERR_EID, CFE_EVS_EventType_ERROR,
-                             "SB Read Error: 0x%08X", (unsigned int)status);
-            STARNAV_AppData.RunStatus = CFE_ES_RunStatus_APP_ERROR;
-        }
-    }
-
-    CFE_ES_ExitApp(STARNAV_AppData.RunStatus);
-}
-
-/* Initialize application */
-int32 STARNAV_Init(void)
-{
-    int32 status;
-
-    STARNAV_AppData.RunStatus = CFE_ES_RunStatus_APP_RUN;
-    memset(&STARNAV_AppData, 0, sizeof(STARNAV_AppData));
-
-    /* Register with Executive Services */
-    CFE_ES_RegisterApp();
-
-    /* Register events */
-    status = CFE_EVS_Register(NULL, 0, CFE_EVS_EventFilter_BINARY);
-    if (status != CFE_SUCCESS) return status;
-
-    /* Create Software Bus pipe */
-    status = CFE_SB_CreatePipe(&STARNAV_AppData.CommandPipe,
-                              STARNAV_PIPE_DEPTH,
-                              "STARNAV_CMD_PIPE");
-    if (status != CFE_SUCCESS) return status;
-
-    /* Subscribe to housekeeping requests */
-    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(STARNAV_SEND_HK_MID),
-                             STARNAV_AppData.CommandPipe);
-    if (status != CFE_SUCCESS) return status;
-
-    /* Subscribe to ground commands */
-    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(STARNAV_CMD_MID),
-                             STARNAV_AppData.CommandPipe);
-    if (status != CFE_SUCCESS) return status;
-
-    /* Initialize message headers */
-    CFE_MSG_Init(CFE_MSG_PTR(STARNAV_AppData.HkTlm.TlmHeader),
-                CFE_SB_ValueToMsgId(STARNAV_HK_TLM_MID),
-                sizeof(STARNAV_AppData.HkTlm));
-
-    CFE_MSG_Init(CFE_MSG_PTR(STARNAV_AppData.AttitudeTlm.TlmHeader),
-                CFE_SB_ValueToMsgId(STARNAV_ATTITUDE_MID),
-                sizeof(STARNAV_AppData.AttitudeTlm));
-
-    /* Initialize UART device */
-    status = STARNAV_InitDevice();
-    if (status != CFE_SUCCESS) return status;
-
-    CFE_EVS_SendEvent(STARNAV_INIT_INF_EID, CFE_EVS_EventType_INFORMATION,
-                     "STARNAV App Initialized");
-
-    return CFE_SUCCESS;
-}
-
-/* Process device data */
-void STARNAV_ProcessDeviceData(void)
-{
-    int32 status = STARNAV_ReadDevice();
-
-    if (status == CFE_SUCCESS) {
-        STARNAV_AppData.HkTlm.LastUpdateTime = CFE_TIME_GetTime().Seconds;
-    }
-    else if (status != STARNAV_NO_DATA) {
-        STARNAV_AppData.HkTlm.DeviceErrors++;
-    }
-}
-
-/* Process command packet */
-void STARNAV_ProcessCommandPacket(CFE_SB_Buffer_t *SBBufPtr)
-{
-    CFE_SB_MsgId_t MsgId = CFE_SB_INVALID_MSG_ID;
-    CFE_MSG_GetMsgId(&SBBufPtr->Msg, &MsgId);
-
-    switch (CFE_SB_MsgIdToValue(MsgId)) {
-        case STARNAV_SEND_HK_MID:
-            /* Send housekeeping telemetry */
-            CFE_SB_TimeStampMsg(CFE_MSG_PTR(STARNAV_AppData.HkTlm.TlmHeader));
-            CFE_SB_TransmitMsg(CFE_MSG_PTR(STARNAV_AppData.HkTlm.TlmHeader),
-                              true);
-            break;
-
-        default:
-            STARNAV_AppData.HkTlm.CommandErrorCounter++;
-            break;
-    }
-}
+    Exit --> [*]
 ```
+
+**Initialization sequence:**
+
+1. Clear global data structure
+2. Register with Event Services (logging)
+3. Create Software Bus pipe for commands
+4. Subscribe to `STARNAV_SEND_HK_MID` (housekeeping requests)
+5. Subscribe to `STARNAV_CMD_MID` (ground commands)
+6. Initialize telemetry message headers
+7. Open and configure UART device
+
+**Main loop behavior:**
+
+- Waits 100ms for Software Bus messages
+- If command received → process it
+- If timeout (normal) → read UART device for attitude data
+- If error → exit application
+
+**Telemetry publishing**: Calls `CFE_SB_TransmitMsg()` to send attitude data whenever complete packet received from STM32.
+
+See actual file for complete cFS framework integration implementation.
 
 ---
 
@@ -841,23 +532,30 @@ ls -l starnav
 
 **Edit `~/workspace/stellar-navigation/cfs-mission/sample_defs/targets.cmake`:**
 
+Add `starnav` to the app list:
+
 ```cmake
-# Add starnav to cpu1 app list
 SET(cpu1_APPLIST ci_lab to_lab sch_lab starnav)
 ```
 
 ### Configure Startup Script
 
-**Edit `~/workspace/stellar-navigation/cfs/build/exe/cpu1/cfe_es_startup.scr`:**
+**Edit `~/workspace/stellar-navigation/cfs-mission/sample_defs/cpu1_cfe_es_startup.scr`:**
 
-Add after existing apps:
+Add STARNAV app startup entry:
 
 ```
-CFE_APP, starnav,     STARNAV_Main,    STARNAV,   50,  16384, 0x0, 0;
+CFE_APP, starnav, STARNAV_Main, STARNAV, 50, 16384, 0x0, 0;
 ```
 
-**Note**: This file is in the build output, not the source. You may need to edit the template at:
-`~/workspace/stellar-navigation/cfs-mission/sample_defs/cpu1_cfe_es_startup.scr`
+**Parameters explained:**
+
+- `starnav`: App name (lowercase, matches directory)
+- `STARNAV_Main`: Entry point function
+- `STARNAV`: App prefix for symbols
+- `50`: Task priority (higher number = higher priority)
+- `16384`: Stack size (16KB, sufficient for UART I/O)
+- `0x0, 0`: Exception action flags (standard values)
 
 ### Rebuild cFS
 
@@ -875,6 +573,9 @@ make -j$(nproc)
 
 # Install
 make install
+
+# Copy startup script
+cp ../cfs-mission/sample_defs/cpu1_cfe_es_startup.scr build/exe/cpu1/cfe_es_startup.scr
 ```
 
 **Important Notes:**
@@ -913,6 +614,40 @@ cd ~/workspace/stellar-navigation/cfs/tools/cFS-GroundSystem
 # Start ground system
 python3 GroundSystem.py
 ```
+
+**Software Bus message flow:**
+
+```mermaid
+graph LR
+    A[Ground System] -->|Commands| B[Software Bus]
+    B -->|STARNAV_CMD_MID| C[STARNAV App]
+
+    C -->|STARNAV_HK_TLM_MID| B
+    C -->|STARNAV_ATTITUDE_MID| B
+    C -->|STARNAV_STATUS_MID| B
+
+    B -->|Telemetry| D[Ground System Display]
+    B -->|Telemetry| E[TO_LAB Telemetry Output]
+    B -->|Telemetry| F[Dashboard via UDP]
+
+    G[SCH_LAB Scheduler] -->|STARNAV_SEND_HK_MID| B
+    B -->|Housekeeping Request| C
+
+    H[STM32 UART] -.->|Attitude Data| C
+
+    style A fill:#90caf9
+    style B fill:#81c784
+    style C fill:#ffb74d
+    style G fill:#90caf9
+    style H fill:#ce93d8
+```
+
+**What to verify:**
+
+- STARNAV app starts without errors
+- UART device opens successfully
+- Attitude messages appear when STM32 sends data
+- Housekeeping telemetry responds to scheduler requests
 
 ---
 

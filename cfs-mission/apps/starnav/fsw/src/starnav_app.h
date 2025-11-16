@@ -32,11 +32,12 @@
 /*
 ** Include Files
 */
-#include "cfe.h"
-#include "cfe_sb_api_typedefs.h"
-#include "common_types.h"
 #include "starnav_msg.h"
 #include "starnav_msgid.h"
+
+#include "cfe.h"
+#include "common_types.h"
+
 #include <stdint.h>
 
 /*

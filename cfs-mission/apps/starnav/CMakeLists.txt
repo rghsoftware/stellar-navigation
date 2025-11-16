@@ -3,7 +3,7 @@ project(CFS_STARNAV C)
 
 set(APP_SRC_FILES
   fsw/src/starnav_app.c
-  fsw/src/starnav_app.c
+  fsw/src/starnav_device.c
 )
 
 add_cfe_app(starnav ${APP_SRC_FILES})
