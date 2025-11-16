@@ -1,6 +1,6 @@
 # Stellar Navigation Development Guide
 
-> **Living Document** - Last Updated: November 2, 2025  
+> **Living Document** - Last Updated: November 15, 2025  
 > **Purpose**: Track implementation progress, decisions, and next actions  
 > **Repository**: [github.com/rghsoftware/stellar-navigation](https://github.com/rghsoftware/stellar-navigation)
 
@@ -17,7 +17,7 @@
 
 - [x] System design documented
 - [x] Hardware architecture defined
-- [ ] STM32 deelopment environment
+- [ ] STM32 development environment
 - [ ] Basic UART communication
 - [ ] Triangle algorithm implementation
 - [ ] cFS integration
@@ -31,42 +31,40 @@
 ### Hardware Checklist
 
 - [x] STM32F407VET6 board received
-- [-] ST-Link V2 programmer available
-- [ ] Raspberry Pi 5 setup (_reference: pi5_setup_guide_)
+- [x] ST-Link V2 programmer available
+- [x] Raspberry Pi 5 setup (_reference: [Hardware Integration](docs/components/hardware-integration.md)_)
 - [x] Arducam B0283 gimbal kit assembled
-- [ ] 6V power supply tested (3-5A)
 - [ ] Wiring harness prepared
-- [ ] 1000µF capacitor installed
 
 ### Software Environment
 
 - [ ] STM32 development environment:
   - [ ] **RTOS Decision** (choose one):
-    - [ ] Zephyr RTOS
+    - [x] Zephyr RTOS
     - [ ] FreeRTOS
     - [ ] Bare metal (no RTOS)
 
-  - [ ] **Development Environment** (choose one):
+  - [x] **Development Environment** (choose one):
     - [ ] STM32CubeIDE
     - [ ] PlatformIO (VS Code)
     - [x] CMake + nvim/editor
     - [ ] Raw ARM toolchain + makefiles
 
-  - [ ] **Required regardless of choice**:
+  - [x] **Required regardless of choice**:
     - [x] arm-none-eabi-gcc compiler
     - [x] Programming tool (dfu-util or stm32flash)
     - [x] Serial terminal for debugging
 
-- [ ] Pi development environment:
-  - [ ] cFS cloned and test-compiled
-  - [x] Python 3.9+ with venv
-  - [x] I2C enabled (_raspi-config_)
+- [x] Pi development environment:
+  - [x] cFS cloned and test-compiled
+  - [x] Python 3.9+ with uv venv
+  - [x] I2C enabled (_reference: [Raspberry Pi Setup](docs/components/raspberry-pi-setup.md)_)
   - [x] UART enabled (console disabled)
 
 ### Test Data Preparation
 
-- [ ] Star catalog selected:
-  - [ ] Hipparcos subset (1000 stars for dev)
+- [x] Star catalog selected:
+  - [x] Yale Bright Star Catalog (BSC5) filtered to magnitude 6.5
   - [ ] Conversion to binary format
 - [ ] Synthetic test generator ready
 - [ ] 20 nominal test cases created
@@ -74,33 +72,111 @@
 
 **Decision Log**:
 
-- **RTOS Choice**: [TBD - Zephyr vs FreeRTOS]
+- **RTOS Choice**: Zephyr was chosen because it has modern device tree, complete driver ecosystem, strong STM32
+  support, and better maintainability.
 - **Catalog Format**: [TBD - Binary structure definition]
 - **Test Data Delivery**: [TBD - Compile-time vs UART streaming]
 
 ---
 
-## 🔨 Phase 1: Foundation Infrastructure
+## 🔨 Phase 1: Hardware Integration & Setup
 
-**Goal**: STM32 ↔ Pi communication with basic data structures  
+**Goal**: Complete hardware assembly and basic system setup  
 **Timeline**: Week 1 (8-12 hours)  
-**Success Criteria**: Board prints catalog stats, receives test observations
+**Success Criteria**: All hardware connected, Pi configured, cFS building
 
-### STM32 Core Setup
+### Hardware Assembly
 
-#### Milestone 1.1: Project Bootstrap
+#### Milestone 1.1: Component Integration
 
-- [ ] Create project structure:
-  ```
-  stellar-nav-stm32/
-  ├── src/
-  │   ├── main.c
-  │   ├── catalog/
-  │   ├── algorithms/
-  │   └── comm/
-  ├── include/
-  └── test_data/
-  ```
+- [ ] Complete wiring harness (_reference: [Hardware Integration](docs/components/hardware-integration.md)_)
+  - [x] STM32 ↔ Pi UART connection (TX/RX crossed)
+  - [x] Pi ↔ PCA9685 I2C connection (400kHz)
+- [ ] Physical assembly
+  - [x] Gimbal mounted and tested
+  - [x] Servo calibration completed
+  - [ ] Cable management secured
+
+**Verification**: All components powered, no shorts, basic servo movement
+
+### Raspberry Pi Configuration
+
+#### Milestone 1.2: Pi 5 Setup
+
+- [x] System configuration (_reference: [Raspberry Pi Setup](docs/components/raspberry-pi-setup.md)_)
+  - [x] OS installed and updated
+  - [x] I2C and UART enabled in raspi-config
+  - [x] Console disabled on UART
+  - [x] Python 3.9+ environment with uv
+- [x] Development tools
+  - [x] Git configured
+  - [x] SSH access working
+  - [x] Network connectivity verified
+
+**Verification**: `i2cdetect -y 1` shows PCA9685, UART accessible
+
+### cFS Framework Setup
+
+#### Milestone 1.3: cFS Integration
+
+- [x] cFS build environment (_reference: [cFS Integration](docs/components/cfs-integration.md)_)
+  - [x] Submodules initialized
+  - [x] Native compilation successful
+  - [x] Mission configuration created
+  - [x] STARNAV_APP template generated
+- [x] Basic testing
+  - [x] Core system starts
+  - [x] Software bus functional
+  - [x] Telemetry collection working
+
+**Verification**: `./core-cpu1` starts without errors, basic apps running
+
+### Development Environment
+
+#### Milestone 1.4: Toolchain Setup
+
+- [x] STM32 development environment
+  - [x] ARM toolchain installed
+  - [x] Programming tools (dfu-util/stm32flash)
+  - [x] Debug terminal configured
+- [ ] Dashboard environment
+  - [ ] Python dependencies installed with uv
+  - [ ] Flask server testable
+  - [ ] WebSocket libraries ready
+
+**Key Metrics**:
+
+- Build time: < 2 minutes for full cFS
+- Power consumption: < 15W total
+- Boot time: < 30 seconds to cFS ready
+
+---
+
+## 🎯 Phase 2: STM32 Firmware & Algorithms
+
+**Goal**: STM32 firmware with star identification algorithms  
+**Timeline**: Week 2-3 (16-24 hours)  
+**Success Criteria**: 90% identification rate on test data
+
+### STM32 Foundation
+
+#### Milestone 2.1: Project Bootstrap
+
+- [ ] Create firmware structure (_reference: [STM32 Firmware](docs/components/stm32-firmware.md)_)
+
+```text
+firmware/
+├── core/
+│   ├── inc/
+│   │   ├── main.h
+│   └── src/
+│       ├── main.c
+├── algorithms/
+├── catalog/
+├── comm/
+└── test/
+```
+
 - [ ] Configure system clocks (168 MHz)
 - [ ] Enable FPU in compiler flags
 - [ ] Setup debug UART (115200 baud)
@@ -108,63 +184,24 @@
 
 **Verification**: `> Stellar Navigation System v0.1.0 Starting...`
 
-#### Milestone 1.2: Star Catalog Structure
+#### Milestone 2.2: Star Catalog & UART
 
-- [ ] Define catalog entry structure:
-  - Star ID (uint16_t)
-  - RA/Dec (float × 2)
-  - Magnitude (float)
-  - Unit vector (float × 3)
-- [ ] Implement catalog loader
-- [ ] Load 1000 stars to RAM
-- [ ] Print catalog statistics
+- [ ] Star catalog structure
+  - [ ] Define catalog entry (ID, RA/Dec, magnitude, unit vector)
+  - [ ] Implement catalog loader
+  - [ ] Load 1000 stars to RAM
+  - [ ] Print catalog statistics
+- [ ] UART protocol implementation
+  - [ ] Packet structure with CRC-16-CCITT
+  - [ ] Serialization/deserialization
+  - [ ] Command handler
+  - [ ] Test with Python script
 
 **Verification**: `> Loaded 1000 stars, magnitude range: 0.5-6.0`
 
-#### Milestone 1.3: UART Protocol
+### Algorithm Implementation
 
-- [ ] Implement packet structure (_ref: Stellar_Navigation_Demo_System.md#uart-binary-protocol_)
-- [ ] CRC-16-CCITT functions
-- [ ] Packet serialization/deserialization
-- [ ] Basic command handler
-- [ ] Test with Python script
-
-**Test Script Location**: `tools/uart_test.py`
-
-### Pi-Side Foundation
-
-#### Milestone 1.4: Python Test Harness
-
-- [ ] Serial communication class
-- [ ] Packet parser matching STM32 format
-- [ ] Test data loader (JSON → binary)
-- [ ] Results validator
-- [ ] Logging framework
-
-#### Milestone 1.5: Initial Integration Test
-
-- [ ] STM32 receives observation from Pi
-- [ ] STM32 echoes data back
-- [ ] CRC validation passes
-- [ ] 10 Hz update rate achieved
-
-**Key Metrics**:
-
-- Packet loss rate: < 0.1%
-- Round-trip time: < 10ms
-- Memory usage: < 32KB RAM
-
----
-
-## 🎯 Phase 2: Triangle Algorithm Implementation
-
-**Goal**: Core star identification working end-to-end  
-**Timeline**: Week 2-3 (16-24 hours)  
-**Success Criteria**: 90% identification rate on test data
-
-### Algorithm Components
-
-#### Milestone 2.1: Geometric Primitives
+#### Milestone 2.3: Geometric Primitives
 
 - [ ] Unit vector from pixel coordinates
 - [ ] Angular distance calculation
@@ -176,13 +213,22 @@
 - Angular distance: < 1 µs
 - Quaternion multiply: < 5 µs
 
-#### Milestone 2.2: Triangle Database Generation
+#### Milestone 2.4: Triangle Algorithm
 
-- [ ] Python script for offline generation
-- [ ] Hash table implementation
-- [ ] Tolerance handling (±0.5°)
-- [ ] Database statistics tool
-- [ ] Convert to C header file
+- [ ] Triangle database generation
+  - [ ] Python script for offline generation
+  - [ ] Hash table implementation
+  - [ ] Tolerance handling (±0.5°)
+  - [ ] Convert to C header file
+- [ ] Pattern matching
+  - [ ] Triangle selection from observations
+  - [ ] Hash lookup implementation
+  - [ ] Candidate verification (brightness, neighbors, geometry)
+  - [ ] Confidence scoring
+- [ ] Attitude determination
+  - [ ] TRIAD implementation
+  - [ ] Input: 3 matched star pairs → Output: quaternion
+  - [ ] Error checking
 
 **Database Metrics**:
 
@@ -190,29 +236,11 @@
 - Hash collisions: < 5%
 - Size: < 128KB
 
-#### Milestone 2.3: Pattern Matching
-
-- [ ] Triangle selection from observations
-- [ ] Hash lookup implementation
-- [ ] Candidate verification:
-  - [ ] Brightness matching
-  - [ ] Neighbor consistency
-  - [ ] Geometric validation
-- [ ] Confidence scoring
-
-#### Milestone 2.4: Attitude Determination
-
-- [ ] TRIAD implementation
-- [ ] Input: 3 matched star pairs
-- [ ] Output: Rotation matrix
-- [ ] Convert to quaternion
-- [ ] Error checking
-
-### Testing & Validation
+### Testing & Integration
 
 #### Milestone 2.5: Algorithm Validation
 
-- [ ] Load test scenario
+- [ ] Load test scenario from test-data/
 - [ ] Run identification
 - [ ] Compare to ground truth
 - [ ] Log performance metrics
@@ -235,15 +263,83 @@
 
 ---
 
-## ⚡ Phase 3: Optimization & Robustness
+## 🌐 Phase 3: Web Dashboard & Visualization
 
-**Goal**: Production-quality performance  
+**Goal**: Real-time web interface for system monitoring  
 **Timeline**: Week 3-4 (12-16 hours)  
-**Success Criteria**: < 100ms identification, < 64KB RAM
+**Success Criteria**: Live 3D visualization, telemetry graphs
+
+### Dashboard Foundation
+
+#### Milestone 3.1: Web Interface
+
+- [ ] Dashboard framework (_reference: [Web Dashboard](docs/components/web-dashboard.md)_)
+  - [ ] Flask server structure
+  - [ ] Three.js 3D spacecraft model
+  - [ ] WebSocket real-time updates
+  - [ ] Chart.js telemetry graphs
+- [ ] UI Components
+  - [ ] Star field visualization
+  - [ ] Quaternion display (Euler angles)
+  - [ ] Performance metrics panel
+  - [ ] Control panel for test scenarios
+
+**Verification**: Dashboard loads at http://localhost:5000
+
+### Data Integration
+
+#### Milestone 3.2: cFS Bridge
+
+- [ ] Python middleware implementation
+  - [ ] cFS Software Bus subscriber
+  - [ ] Message parsing (STARNAV_ATTITUDE_MID)
+  - [ ] WebSocket server
+  - [ ] Error handling and reconnection
+- [ ] Gimbal control interface
+  - [ ] Quaternion → Euler conversion
+  - [ ] Servo angle mapping
+  - [ ] Smooth motion interpolation
+  - [ ] Boundary limit enforcement
+
+**Architecture Validation**:
+
+- [ ] STM32 → UART → cFS → Python → WebSocket → Browser
+- [ ] Python → I2C → PCA9685 → Servos
+
+### User Experience
+
+#### Milestone 3.3: Interactive Features
+
+- [ ] Real-time updates
+  - [ ] 10 Hz attitude updates
+  - [ ] Live performance metrics
+  - [ ] Star identification visualization
+- [ ] Control capabilities
+  - [ ] Test scenario selection
+  - [ ] Manual gimbal control
+  - [ ] System mode switching
+- [ ] Data logging
+  - [ ] Telemetry history
+  - [ ] Performance tracking
+  - [ ] Export capabilities
+
+**Performance Targets**:
+
+- Update rate: 10 Hz
+- Latency: < 100ms
+- Browser compatibility: Chrome/Firefox/Safari
+
+---
+
+## ⚡ Phase 4: Optimization & Advanced Features
+
+**Goal**: Production-quality performance and robustness  
+**Timeline**: Week 4-5 (16-24 hours)  
+**Success Criteria**: < 100ms identification, advanced algorithms
 
 ### Performance Optimization
 
-#### Milestone 3.1: Profiling
+#### Milestone 4.1: Algorithm Profiling
 
 - [ ] Identify hot paths with profiler
 - [ ] Measure function execution times
@@ -256,7 +352,7 @@
 2. **\*\***\_\_\_**\*\***: \_\_\_ms
 3. **\*\***\_\_\_**\*\***: \_\_\_ms
 
-#### Milestone 3.2: Algorithm Optimization
+#### Milestone 4.2: Optimization Techniques
 
 - [ ] FPU optimization patterns
 - [ ] Loop unrolling where beneficial
@@ -264,7 +360,7 @@
 - [ ] Memory pool for allocations
 - [ ] Flash-to-RAM streaming
 
-#### Milestone 3.3: QUEST Implementation
+#### Milestone 4.3: QUEST Implementation
 
 - [ ] Optimal attitude from N stars
 - [ ] Weighted least squares
@@ -276,41 +372,14 @@
 - TRIAD: \_\_\_° typical error
 - QUEST: \_\_\_° typical error
 
-### Robustness Features
+### Advanced Algorithms
 
-#### Milestone 3.4: Error Handling
-
-- [ ] Outlier rejection (RANSAC-style)
-- [ ] False star detection
-- [ ] Partial occlusion handling
-- [ ] Confidence thresholds
-- [ ] Graceful degradation
-
-#### Milestone 3.5: Edge Case Testing
-
-- [ ] Field boundary stars
-- [ ] Minimum viable stars (3-4)
-- [ ] High noise (0.2px)
-- [ ] False detections (20%)
-- [ ] Recovery scenarios
-
----
-
-## 🔄 Phase 4: Advanced Algorithms
-
-**Goal**: Dual-mode operation with tracking  
-**Timeline**: Week 4-5 (16-24 hours)  
-**Success Criteria**: Lost-in-space < 2s, tracking < 50ms
-
-### Geometric Voting Algorithm
-
-#### Milestone 4.1: Implementation
+#### Milestone 4.4: Geometric Voting
 
 - [ ] All-pairs hypothesis generation
 - [ ] Attitude computation per hypothesis
 - [ ] Vote accumulation matrix
 - [ ] Winner selection logic
-- [ ] Performance profiling
 
 **Comparison to Triangle**:
 | Metric | Triangle | Geometric Voting |
@@ -320,27 +389,13 @@
 | Memory | | |
 | Robustness | | |
 
-### Tracking Mode
-
-#### Milestone 4.2: Tracking Implementation
+#### Milestone 4.5: Tracking Mode
 
 - [ ] State propagation from previous frame
 - [ ] Star position prediction
 - [ ] Nearest-neighbor matching
 - [ ] Incremental attitude update
-- [ ] Outlier rejection
-
-#### Milestone 4.3: Mode Management
-
-- [ ] State machine implementation:
-  ```
-  LOST → ACQUIRING → TRACKING
-         ↑              ↓
-         ← ← ← ← ← ← ← ←
-  ```
-- [ ] Transition criteria
-- [ ] Failure recovery
-- [ ] Mode status reporting
+- [ ] State machine (LOST → ACQUIRING → TRACKING)
 
 **Performance Targets**:
 
@@ -348,83 +403,94 @@
 - Tracking maintenance: > 99% frames
 - Recovery time: < 5 seconds
 
+### Robustness Features
+
+#### Milestone 4.6: Error Handling
+
+- [ ] Outlier rejection (RANSAC-style)
+- [ ] False star detection
+- [ ] Partial occlusion handling
+- [ ] Confidence thresholds
+- [ ] Graceful degradation
+
+#### Milestone 4.7: Edge Case Testing
+
+- [ ] Field boundary stars
+- [ ] Minimum viable stars (3-4)
+- [ ] High noise (0.2px)
+- [ ] False detections (20%)
+- [ ] Recovery scenarios
+
 ---
 
-## 🌐 Phase 5: System Integration
+## 🎯 Phase 5: System Integration & Demo
 
-**Goal**: Complete demo system operational  
+**Goal**: Complete end-to-end demonstration system  
 **Timeline**: Week 5-6 (20-30 hours)  
-**Success Criteria**: End-to-end demonstration working
+**Success Criteria**: Full demo working with all components integrated
 
-### cFS Integration
+### End-to-End Integration
 
-#### Milestone 5.1: STARNAV_APP
+#### Milestone 5.1: Complete Data Flow
 
-- [ ] App structure from template
-- [ ] UART device driver
-- [ ] Software Bus messages:
-  - [ ] STARNAV_ATTITUDE_MID
-  - [ ] STARNAV_STATUS_MID
-  - [ ] STARNAV_CMD_MID
-- [ ] Message routing
-- [ ] Telemetry tables
+- [ ] Full pipeline validation
+  - [ ] STM32 star identification → UART
+  - [ ] Pi cFS STARNAV_APP → Software Bus
+  - [ ] Python bridge → WebSocket + I2C
+  - [ ] Web dashboard → Real-time visualization
+  - [ ] Gimbal control → Physical tracking
+- [ ] Performance validation
+  - [ ] < 1s lost-in-space time
+  - [ ] 10 Hz tracking updates
+  - [ ] > 95% success rate
+  - [ ] < 0.1° attitude accuracy
 
-**Reference**: `cfe/cmake/sample_defs/`
+#### Milestone 5.2: System Testing
 
-#### Milestone 5.2: Python Bridge
+- [ ] Integration test suite
+  - [ ] Hardware-in-the-loop testing
+  - [ ] Long-duration stability testing
+  - [ ] Error recovery testing
+  - [ ] Performance under load
+- [ ] User acceptance testing
+  - [ ] Demo scenario walkthrough
+  - [ ] Feature completeness validation
+  - [ ] Documentation accuracy check
 
-- [ ] cFS message subscriber
-- [ ] WebSocket server
-- [ ] Gimbal control interface
-- [ ] Data flow orchestration
-- [ ] Error handling
+### Demonstration Scenarios
 
-**Architecture Validation**:
+#### Milestone 5.3: Demo Scripts
 
-- [ ] STM32 → UART → cFS
-- [ ] cFS → Python → WebSocket
-- [ ] Python → I2C → Gimbal
+- [ ] Basic star identification demo
+  - [ ] Load test scenario
+  - [ ] Show algorithm working
+  - [ ] Display attitude output
+- [ ] Tracking mode demo
+  - [ ] Continuous attitude updates
+  - [ ] Gimbal following spacecraft
+  - [ ] Real-time telemetry
+- [ ] Edge case demonstrations
+  - [ ] Minimal star scenarios
+  - [ ] Noise tolerance
+  - [ ] Recovery from failures
 
-### User Interface
+#### Milestone 5.4: Presentation Materials
 
-#### Milestone 5.3: Web Dashboard
+- [ ] Demo documentation
+  - [ ] Quick start guide
+  - [ ] Troubleshooting reference
+  - [ ] Performance benchmarks
+- [ ] Video documentation
+  - [ ] System overview video
+  - [ ] Component setup guides
+  - [ ] Demo walkthrough
 
-- [ ] Three.js 3D spacecraft model
-- [ ] Real-time quaternion display
-- [ ] Telemetry graphs (Chart.js)
-- [ ] Star field visualization
-- [ ] Control panel:
-  - [ ] Mode selection
-  - [ ] Test scenario loader
-  - [ ] Performance metrics
-- [ ] WebSocket updates
+**Final Validation**:
 
-**Dashboard Components**:
-
-```
-┌─────────────────┬──────────────┐
-│  3D Spacecraft  │  Telemetry   │
-├─────────────────┼──────────────┤
-│  Star Field     │  Controls    │
-└─────────────────┴──────────────┘
-```
-
-### Physical Demonstration
-
-#### Milestone 5.4: Gimbal Control
-
-- [ ] Quaternion → Euler conversion
-- [ ] Servo angle mapping
-- [ ] Smooth motion interpolation
-- [ ] Boundary limit enforcement
-- [ ] Manual override mode
-
-**Test Sequence**:
-
-1. Random attitude → Gimbal tracks
-2. Sweep test → Full range motion
-3. Tracking mode → Smooth updates
-4. Edge cases → Gimbal singularities
+- [ ] All components working together
+- [ ] Performance targets met
+- [ ] Documentation complete and accurate
+- [ ] Ready for demonstration
 
 ---
 
@@ -526,9 +592,12 @@
 
 ### Key Documents
 
-- [System Design](./Stellar_Navigation_Demo_System_Updated.md)
-- [Algorithm Details](./Stellar_Navigation_System_Development_Updated.md)
-- [Research Paper](./Star_Track_Space.pdf)
+- [Hardware Integration](./docs/components/hardware-integration.md)
+- [STM32 Firmware](./docs/components/stm32-firmware.md)
+- [Raspberry Pi Setup](./docs/components/raspberry-pi-setup.md)
+- [cFS Integration](./docs/components/cfs-integration.md)
+- [Web Dashboard](./docs/components/web-dashboard.md)
+- [Stellar Nav Quick Ref](./docs/stellar_nav_quick_ref.md)
 
 ### Critical Code Locations
 
@@ -561,11 +630,11 @@ i2cdetect -y 1
 ## 📈 Progress Visualization
 
 ```
-Phase 1: Foundation      [####____] 50%
-Phase 2: Triangle Algo   [________] 0%
-Phase 3: Optimization    [________] 0%
-Phase 4: Advanced        [________] 0%
-Phase 5: Integration     [________] 0%
+Phase 1: Hardware & Setup     [####____] 50%
+Phase 2: STM32 & Algorithms    [________] 0%
+Phase 3: Web Dashboard         [________] 0%
+Phase 4: Optimization          [________] 0%
+Phase 5: System Integration    [________] 0%
 
 Overall Progress: ████░░░░░░░░░░░░ 20%
 ```

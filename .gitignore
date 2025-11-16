@@ -24,6 +24,7 @@ venv/
 
 # Test data (use Git LFS for binary files)
 test-data/scenarios/*.bin
+**/BSC5
 
 # Secrets
 **/secrets.yaml
