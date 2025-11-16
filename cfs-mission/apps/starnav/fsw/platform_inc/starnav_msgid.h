@@ -33,12 +33,12 @@
 #define STARNAV_MSGID_H
 
 /* Command Message IDs */
-#define STARNAV_CMD_MID     (0x1880) /* Commands to STARNAV app */
-#define STARNAV_SEND_HK_MID (0x1881) /* Request housekeeping */
+#define STARNAV_CMD_MID     (0x1880U) /* Commands to STARNAV app */
+#define STARNAV_SEND_HK_MID (0x1881U) /* Request housekeeping */
 
 /* Telemetry Message IDs */
-#define STARNAV_HK_TLM_MID   (0x0880) /* Housekeeping telemetry */
-#define STARNAV_ATTITUDE_MID (0x0881) /* Attitude data from STM32 */
-#define STARNAV_STATUS_MID   (0x0882) /* Device status telemetry */
+#define STARNAV_HK_TLM_MID   (0x0880U) /* Housekeeping telemetry */
+#define STARNAV_ATTITUDE_MID (0x0881U) /* Attitude data from STM32 */
+#define STARNAV_STATUS_MID   (0x0882U) /* Device status telemetry */
 
 #endif /* STARNAV_MSGID_H */

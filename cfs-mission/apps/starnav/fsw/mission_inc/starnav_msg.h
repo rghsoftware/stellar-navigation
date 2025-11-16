@@ -24,6 +24,23 @@
 
 /**
  * @file starnav_msg.h
+ *
+ * @brief StarNav Message Definitions
+ *
+ * This header defines message structures for communication between the StarNav
+ * CFS application and the STM32-based star tracker hardware via UART interface.
+ *
+ * The message structures include:
+ * - Attitude telemetry with quaternion and Euler angle representations
+ * - Device status and performance metrics
+ * - Application housekeeping data
+ * - Command message formats
+ *
+ * @note All telemetry message formats must maintain compatibility with the
+ *       STM32 firmware UART packet protocol
+ *
+ * @author Robert Hamilton
+ * @date 2025
  */
 
 #ifndef STARNAV_MSG_H

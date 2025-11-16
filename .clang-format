@@ -1,40 +1,40 @@
 ---
-Language:        Cpp
-Standard:        c++11
+Language: Cpp
+Standard: c++11
 
 # Indentation
 AccessModifierOffset: -4
-IndentWidth:     4
+IndentWidth: 4
 IndentCaseLabels: true
 IndentPPDirectives: None
 ContinuationIndentWidth: 4
-TabWidth:        8
-UseTab:          Never
+TabWidth: 8
+UseTab: Never
 
 # Alignment - Modernized for clang-format 21
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments:
-  Enabled:         true
+  Enabled: true
   AcrossEmptyLines: false
-  AcrossComments:  true
-  AlignCompound:   true
+  AcrossComments: true
+  AlignCompound: true
   AlignFunctionPointers: true
-  PadOperators:    true
+  PadOperators: true
 AlignConsecutiveDeclarations:
-  Enabled:         true
+  Enabled: true
   AcrossEmptyLines: false
-  AcrossComments:  true
+  AcrossComments: true
   AlignFunctionPointers: true
-  PadOperators:    true
+  PadOperators: true
 AlignConsecutiveMacros:
-  Enabled:         true
+  Enabled: true
   AcrossEmptyLines: false
-  AcrossComments:  true
+  AcrossComments: true
 AlignEscapedNewlines: Left
-AlignOperands:   Align
+AlignOperands: Align
 AlignTrailingComments:
-  Kind:            Always
-  OverEmptyLines:  0
+  Kind: Always
+  OverEmptyLines: 0
 
 # Breaking
 BreakBeforeBraces: Allman
@@ -43,8 +43,9 @@ BreakBeforeTernaryOperators: true
 BreakStringLiterals: true
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
-AllowAllParametersOfDeclarationOnNextLine: true
-ColumnLimit:     120
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+ColumnLimit: 120
 
 # Short constructs
 AllowShortBlocksOnASingleLine: Empty
@@ -60,25 +61,25 @@ SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: false
 SpaceBeforeCpp11BracedList: true
-SpacesBeforeTrailingComments: 1
+SpacesBeforeTrailingComments: 2
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 
 # Packing and formatting
-BinPackArguments: true
-BinPackParameters: true
+BinPackArguments: false
+BinPackParameters: false
 Cpp11BracedListStyle: true
 PointerAlignment: Right
 DerivePointerAlignment: false
-ReflowComments:  true
+ReflowComments: true
 KeepEmptyLinesAtTheStartOfBlocks: true
 MaxEmptyLinesToKeep: 1
 
 # Includes
-SortIncludes:    Never
-IncludeBlocks:   Preserve
-IncludeCategories:  []
+SortIncludes: Never
+IncludeBlocks: Preserve
+IncludeCategories: []
 
 # Penalties (fine-tuning line breaking decisions)
 PenaltyBreakAssignment: 2
@@ -90,6 +91,5 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 
 # Other
-DisableFormat:   false
-...
-
+DisableFormat: false
+---
