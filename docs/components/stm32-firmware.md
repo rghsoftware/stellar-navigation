@@ -11,6 +11,7 @@
 The STM32 runs the core star identification algorithms and computes spacecraft attitude in real-time. It operates independently from the Raspberry Pi, sending results over UART.
 
 **Responsibilities:**
+
 - Star pattern matching (Triangle algorithm)
 - Attitude determination (TRIAD/QUEST)
 - Real-time processing (<100ms per frame)
@@ -23,12 +24,14 @@ The STM32 runs the core star identification algorithms and computes spacecraft a
 ### Board: STM32F407VET6 "Black VET6"
 
 **Specifications:**
+
 - ARM Cortex-M4F @ 168 MHz
 - Hardware FPU (critical for performance)
 - 512KB Flash, 192KB RAM
 - 100-pin LQFP package
 
 **Purchase:**
+
 - Search: "STM32F407VET6 development board"
 - Price: $10-20
 - Avoid "Mini" versions (different pinout)
@@ -36,6 +39,7 @@ The STM32 runs the core star identification algorithms and computes spacecraft a
 ### Initial Testing
 
 **Visual Inspection:**
+
 ```bash
 # Check for:
 - Bent pins on headers
@@ -45,6 +49,7 @@ The STM32 runs the core star identification algorithms and computes spacecraft a
 ```
 
 **Power-On Test:**
+
 ```bash
 # Connect micro-USB to computer
 # LED should illuminate (usually red/blue)
@@ -61,47 +66,10 @@ dfu-util -l
 
 ## Development Environment Setup
 
-### Option 1: PlatformIO (Recommended)
-
-**Installation:**
-```bash
-# Install VS Code extension "PlatformIO IDE"
-# Or via CLI:
-pip install platformio
-
-# Create project:
-pio init --board black_f407ve
-```
-
-**platformio.ini:**
-```ini
-[env:black_f407ve]
-platform = ststm32
-board = black_f407ve
-framework = stm32cube
-
-build_flags = 
-    -mfpu=fpv4-sp-d16
-    -mfloat-abi=hard
-    -D USE_FULL_ASSERT
-    
-upload_protocol = dfu
-```
-
-### Option 2: STM32CubeIDE
-
-**Download:**
-- https://www.st.com/en/development-tools/stm32cubeide.html
-- Free registration required
-
-**Project Setup:**
-- Select STM32F407VE as target
-- Enable FPU in project settings
-- Configure clock to 168 MHz
-
-### Option 3: CMake + ARM Toolchain
+### CMake + ARM Toolchain
 
 **Install toolchain:**
+
 ```bash
 # Arch Linux
 yay -S arm-none-eabi-gcc arm-none-eabi-newlib
@@ -114,6 +82,7 @@ arm-none-eabi-gcc --version
 ```
 
 **Programming tool:**
+
 ```bash
 # For DFU bootloader
 sudo pacman -S dfu-util  # Arch
@@ -132,6 +101,7 @@ dfu-util -a 0 -s 0x08000000:leave -D firmware.bin
 **Target:** 168 MHz system clock with FPU enabled
 
 **Clock Tree:**
+
 ```mermaid
 graph TB
     A[HSE 8 MHz crystal] --> B[PLL]
@@ -139,11 +109,11 @@ graph TB
     C --> D[AHB Prescaler /1]
     C --> E[APB1 Prescaler /4]
     C --> F[APB2 Prescaler /2]
-    
+
     D --> G[CPU: 168 MHz]
     E --> H[UART2: 42 MHz]
     F --> I[Timers: 84 MHz]
-    
+
     style A fill:#ffa726
     style C fill:#66bb6a
     style G fill:#4fc3f7
@@ -152,6 +122,7 @@ graph TB
 ```
 
 **Code (STM32CubeMX generated):**
+
 ```c
 void SystemClock_Config(void)
 {
@@ -184,6 +155,7 @@ void SystemClock_Config(void)
 ### FPU Activation (Critical!)
 
 **Compiler Flags:**
+
 ```makefile
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb
@@ -192,6 +164,7 @@ CFLAGS += -mfloat-abi=hard
 ```
 
 **Runtime Enable:**
+
 ```c
 // In main() before any floating-point operations
 void EnableFPU(void)
@@ -202,6 +175,7 @@ void EnableFPU(void)
 ```
 
 **Verification:**
+
 ```c
 // Test FPU is working
 float test = 3.14159f * 2.0f;
@@ -217,11 +191,13 @@ if (test > 6.0f && test < 7.0f) {
 ### UART2 on PA2/PA3
 
 **Pin Assignment:**
+
 - PA2: TX (to Pi GPIO 15)
 - PA3: RX (from Pi GPIO 14)
 - GND: Common ground
 
 **Configuration:**
+
 ```c
 void UART2_Init(void)
 {
@@ -239,12 +215,12 @@ void UART2_Init(void)
 void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
-    
+
     if(huart->Instance == USART2)
     {
         __HAL_RCC_USART2_CLK_ENABLE();
         __HAL_RCC_GPIOA_CLK_ENABLE();
-        
+
         // PA2: USART2_TX, PA3: USART2_RX
         GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -263,6 +239,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 ### Packet Format
 
 **Structure:**
+
 ```
 [SYNC1][SYNC2][MSG_ID][LENGTH][PAYLOAD...][CRC16]
 
@@ -277,6 +254,7 @@ CRC16:   CRC-16-CCITT checksum
 ### Message Types
 
 **0x01: Attitude Message**
+
 ```c
 typedef struct __attribute__((packed)) {
     float quaternion[4];      // w, x, y, z
@@ -289,6 +267,7 @@ typedef struct __attribute__((packed)) {
 ```
 
 **0x02: Status Message**
+
 ```c
 typedef struct __attribute__((packed)) {
     uint8_t system_state;     // Current operating state
@@ -306,22 +285,22 @@ void SendAttitudePacket(AttitudePacket_t *attitude)
 {
     uint8_t buffer[128];
     uint16_t index = 0;
-    
+
     // Header
     buffer[index++] = 0xAA;
     buffer[index++] = 0x55;
     buffer[index++] = 0x01;  // Attitude message
     buffer[index++] = sizeof(AttitudePacket_t);
-    
+
     // Payload
     memcpy(&buffer[index], attitude, sizeof(AttitudePacket_t));
     index += sizeof(AttitudePacket_t);
-    
+
     // CRC
     uint16_t crc = CalculateCRC16(buffer, index);
     buffer[index++] = (crc >> 8) & 0xFF;
     buffer[index++] = crc & 0xFF;
-    
+
     // Transmit
     HAL_UART_Transmit(&huart2, buffer, index, 100);
 }
@@ -329,10 +308,10 @@ void SendAttitudePacket(AttitudePacket_t *attitude)
 uint16_t CalculateCRC16(uint8_t *data, uint16_t length)
 {
     uint16_t crc = 0xFFFF;
-    
+
     for (uint16_t i = 0; i < length; i++) {
         crc ^= (uint16_t)data[i] << 8;
-        
+
         for (uint8_t j = 0; j < 8; j++) {
             if (crc & 0x8000) {
                 crc = (crc << 1) ^ 0x1021;  // CRC-16-CCITT polynomial
@@ -341,7 +320,7 @@ uint16_t CalculateCRC16(uint8_t *data, uint16_t length)
             }
         }
     }
-    
+
     return crc;
 }
 ```
@@ -352,25 +331,25 @@ uint16_t CalculateCRC16(uint8_t *data, uint16_t length)
 
 ```
 firmware/
-├── Core/
-│   ├── Inc/
+├── core/
+│   ├── inc/
 │   │   ├── main.h
 │   │   └── stm32f4xx_hal_conf.h
-│   └── Src/
+│   └── src/
 │       ├── main.c
 │       ├── system_stm32f4xx.c
 │       └── stm32f4xx_it.c
-├── Algorithms/
+├── algorithms/
 │   ├── triangle.c         # Triangle algorithm
 │   ├── triad.c            # TRIAD attitude solver
 │   └── quest.c            # QUEST optimizer
-├── Catalog/
+├── catalog/
 │   ├── star_catalog.h     # Binary star database
 │   └── catalog_loader.c   # Memory management
-├── Comm/
+├── comm/
 │   ├── uart_protocol.c    # Packet framing
 │   └── crc.c              # Checksum functions
-└── Test/
+└── test/
     └── synthetic_data.c   # Test data generator
 ```
 
@@ -381,12 +360,14 @@ firmware/
 ### Resource Budget
 
 **Flash (512KB):**
+
 - Firmware code: ~100KB
 - Star catalog: ~200KB (1000 stars)
 - Triangle database: ~150KB
 - Reserved: ~62KB
 
 **RAM (192KB):**
+
 - Stack: 16KB
 - Heap: 32KB
 - Catalog cache: 64KB
@@ -396,6 +377,7 @@ firmware/
 ### Optimization Tips
 
 **Use Flash for Static Data:**
+
 ```c
 // Store catalog in flash, not RAM
 const __attribute__((section(".rodata"))) StarEntry_t catalog[1000] = {
@@ -404,6 +386,7 @@ const __attribute__((section(".rodata"))) StarEntry_t catalog[1000] = {
 ```
 
 **Pool Allocators:**
+
 ```c
 // Pre-allocate buffers
 static ObservationBuffer_t obs_pool[MAX_OBSERVATIONS];
@@ -421,13 +404,13 @@ ObservationBuffer_t* AllocateObservation(void) {
 
 ## Performance Targets
 
-| Metric | Target | Typical |
-|--------|--------|---------|
-| Lost-in-space time | < 1s | ~500ms |
-| Tracking update | < 100ms | ~50ms |
-| Success rate | > 95% | ~98% |
-| Power consumption | < 1W | ~500mW |
-| CPU utilization | < 50% | ~30% |
+| Metric             | Target  | Typical |
+| ------------------ | ------- | ------- |
+| Lost-in-space time | < 1s    | ~500ms  |
+| Tracking update    | < 100ms | ~50ms   |
+| Success rate       | > 95%   | ~98%    |
+| Power consumption  | < 1W    | ~500mW  |
+| CPU utilization    | < 50%   | ~30%    |
 
 ---
 
@@ -436,6 +419,7 @@ ObservationBuffer_t* AllocateObservation(void) {
 ### Debug UART
 
 **Additional UART for logging (UART1 on PA9/PA10):**
+
 ```c
 void DebugPrintf(const char *format, ...)
 {
@@ -444,7 +428,7 @@ void DebugPrintf(const char *format, ...)
     va_start(args, format);
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
-    
+
     HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 100);
 }
 ```
@@ -452,6 +436,7 @@ void DebugPrintf(const char *format, ...)
 ### Profiling
 
 **Cycle Counter:**
+
 ```c
 void EnableDWT(void)
 {
@@ -480,6 +465,7 @@ float ms = (float)cycles / 168000.0f;  // At 168 MHz
 ### Issue: No USB device detected
 
 **Solutions:**
+
 - Try different USB cable (data, not charge-only)
 - Check BOOT0/BOOT1 jumpers
 - Verify 8MHz crystal is oscillating
@@ -488,6 +474,7 @@ float ms = (float)cycles / 168000.0f;  // At 168 MHz
 ### Issue: FPU hard fault
 
 **Solutions:**
+
 - Verify compiler flags include `-mfloat-abi=hard`
 - Enable FPU in startup code before main()
 - Check linker script uses correct architecture
@@ -495,6 +482,7 @@ float ms = (float)cycles / 168000.0f;  // At 168 MHz
 ### Issue: UART data corruption
 
 **Solutions:**
+
 - Verify baud rate matches on both ends
 - Check GPIO alternate function mapping
 - Add pull-up resistors if needed
@@ -505,6 +493,7 @@ float ms = (float)cycles / 168000.0f;  // At 168 MHz
 ## Next Steps
 
 After STM32 firmware is working:
+
 1. → See `raspberry-pi-setup.md` for Pi configuration
 2. → See `hardware-integration.md` for physical connections
 3. → See `cfs-integration.md` for Software Bus integration
